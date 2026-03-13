@@ -1,0 +1,9 @@
+id,text,source,attack_type,attack_owner,generator_model
+tr_001,"I woke up early and wrote my notes before class.",human,none,none,na
+tr_002,"The cafe near campus has a noisy espresso machine but great sandwiches.",human,none,none,na
+tr_003,"My project deadline is close, so I divided tasks with my teammates.",human,none,none,na
+tr_004,"The rain started suddenly and everyone ran toward the bus stop.",human,none,none,na
+tr_005,"This essay presents a concise analysis of renewable policy adoption trends.",ai,none,none,gpt
+tr_006,"The system provides a structured overview of key components and outcomes.",ai,none,none,gpt
+tr_007,"In conclusion, this framework offers robust performance across settings.",ai,none,none,gpt
+tr_008,"The generated response maintains coherence, clarity, and topical consistency.",ai,none,none,gpt

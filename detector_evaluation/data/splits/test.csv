@@ -1,0 +1,10 @@
+﻿id,text,source,attack_type,attack_owner,generator_model
+te_001,"I left my umbrella at home and got soaked walking back.",human,none,none,na
+te_002,"The lecture was fast, but the examples made the topic easier.",human,none,none,na
+te_003,"The proposed architecture enables scalable deployment and efficient inference.",ai,none,none,gpt
+te_004,"The summary captures essential findings while preserving semantic intent.",ai,none,none,gpt
+te_005,"I left my umbrella at home and got soaked walking back.",ai,prompt,contributor_a,gpt
+te_006,"The lecture was fast, but the examples made the topic easier.",ai,paraphrase,contributor_b,gpt
+te_007,"The proposed architecture enables scalable deployment and efficient inference.",ai,gradient,contributor_c,gpt
+te_008,"The summary captures essential findings while preserving semantic intent.",ai,char,contributor_d,gpt
+
