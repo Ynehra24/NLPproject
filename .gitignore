@@ -1,0 +1,33 @@
+# Python environments and caches
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local/generated artifacts
+attacks_outputs/
+explanation.md
+
+# Project-local docs/plans and outputs
+detector_evaluation/IMPLEMENTATION_PLAN.txt
+detector_evaluation/docs/
+detector_evaluation/results/
+detector_evaluation/fix_unicode.py
+
+# Packaging/build artifacts
+*.so
+.Python
+*.egg-info/
+dist/
+build/
