@@ -1,0 +1,11 @@
+Model: roberta-base
+Task: Binary classification (human=0, ai=1)
+Owner: Akshat detector pipeline
+
+Training data requirements:
+- Columns: id, text, source
+- source values: human / ai
+
+Artifacts produced by train.py:
+- HuggingFace model folder with tokenizer and config
+- metrics.json containing validation metrics and threshold
