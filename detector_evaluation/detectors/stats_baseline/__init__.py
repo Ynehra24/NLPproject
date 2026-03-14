@@ -1,0 +1,1 @@
+"""Statistical detector baseline package."""
