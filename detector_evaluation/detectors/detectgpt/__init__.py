@@ -1,0 +1,1 @@
+"""DetectGPT-style detector package."""
