@@ -31,3 +31,7 @@ detector_evaluation/fix_unicode.py
 *.egg-info/
 dist/
 build/
+
+detector_evaluation/papers/
+read_papers.py
+read_papers_v2.py

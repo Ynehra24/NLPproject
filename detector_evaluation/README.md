@@ -684,6 +684,60 @@ auroc = roc_auc_score(scores_df["source"] == "ai", scores_df["ensemble_score"])
 print(f"Ensemble AUROC: {auroc:.4f}")
 ```
 
+### Disagreement-Aware Ensemble (Proposed Novelty)
+
+Run the cross-paradigm meta-detector on existing detector score files:
+
+```bash
+python -m evaluation.disagreement_ensemble \
+  --scores-dir results/detector_scores \
+  --output-dir results/disagreement_ensemble \
+  --detectors roberta_classifier fast_detectgpt binoculars kgw_watermark \
+  --calibration-attack-type none
+```
+
+Outputs:
+
+- `ensemble_feature_table.csv`: normalized scores `s_i` with disagreement feature `disagreement_var`
+- `ensemble_ablation_metrics.csv`: mean baseline, logistic base, disagreement-augmented, oracle upper-bound
+- `disagreement_ks_tests.csv`: KS-test validation for disagreement distribution shifts
+- `ensemble_predictions.csv`: per-sample ensemble scores by ablation variant
+
+### Cross-Paradigm Evasion Rate (All-Detector Simultaneous Evasion)
+
+Compute per-detector evasion and simultaneous all-detector evasion for AI samples:
+
+```bash
+python -m evaluation.cross_paradigm_evasion \
+  --scores-dir results/detector_scores \
+  --output-dir results/cross_paradigm_evasion \
+  --detectors roberta_classifier fast_detectgpt binoculars kgw_watermark \
+  --group-by attack_type_owner
+```
+
+Outputs:
+
+- `cross_paradigm_evasion_summary.csv`: includes `cross_paradigm_evasion_rate_all_selected`
+- `per_paradigm_evasion_long.csv`: per-condition per-detector evasion rates
+- `cross_paradigm_ai_wide.csv`: row-level AI-only table with boolean evasion flags per detector
+
+### Detector Latency Benchmark
+
+Benchmark per-sample inference latency across selected detectors:
+
+```bash
+python -m evaluation.latency_benchmark \
+  --input data/splits/test.csv \
+  --output results/latency/latency_benchmark.csv \
+  --device cpu \
+  --roberta-model-dir results/roberta_model \
+  --run-fast-detectgpt \
+  --run-binoculars \
+  --run-watermark
+```
+
+The output CSV reports total elapsed time and `latency_ms_per_sample` for each detector.
+
 ## Performance Benchmarks (on sample data)
 
 Baseline expectations (single GPU, 512-token texts):
