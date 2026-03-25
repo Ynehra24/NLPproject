@@ -25,6 +25,11 @@ detector_evaluation/docs/
 detector_evaluation/results/
 detector_evaluation/fix_unicode.py
 detector_evaluation/data/
+detector_evaluation/reports/
+detector_evaluation/prompts/
+detector_evaluation/evaluation/gemini_report_writer.py
+detector_evaluation/.env
+detector_evaluation/.env.*
 
 # Packaging/build artifacts
 *.so

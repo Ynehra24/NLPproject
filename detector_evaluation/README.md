@@ -947,45 +947,50 @@ Outputs:
 - `results/adaptive_retrain/round_*/attack_eval_roberta_scores.csv`
 - `results/adaptive_retrain/adaptive_retrain_summary.csv`
 
-### 4) One-Command Analysis Suite
+### 4) Evaluate Teammate Data
 
-Runs the full post-training workflow end-to-end in one command:
-
-1. Run all detectors on train/val/test
-2. Aggregate metrics and generate plots for each split
-3. Build one combined all-splits table
-4. Build detector mean/std summary across splits
-5. Run transferability, watermark robustness, cross-paradigm evasion,
-   disagreement ensemble, and latency benchmark
+One-command workflow to evaluate teammate-contributed data with all 6 detectors:
 
 ```bash
-python -m evaluation.analysis_suite \
-  --train data/splits/train.csv \
-  --val data/splits/val.csv \
-  --test data/splits/test.csv \
+python -m evaluation.evaluate_teammate \
+  --input teammate_data.csv \
+  --output-dir results/teammate_eval \
   --model-dir results/roberta_model \
   --device cpu \
-  --detectgpt-perturb 2 \
-  --output-root results/analysis_suite
+  --detectgpt-perturb 2
 ```
 
-Main outputs:
+**Workflow**:
 
-- `results/analysis_suite/tables/metrics_train.csv`
-- `results/analysis_suite/tables/metrics_val.csv`
-- `results/analysis_suite/tables/metrics_test.csv`
-- `results/analysis_suite/tables/metrics_all_splits.csv`
-- `results/analysis_suite/tables/detector_summary_across_splits.csv`
-- `results/analysis_suite/figures/train/`
-- `results/analysis_suite/figures/val/`
-- `results/analysis_suite/figures/test/`
-- `results/analysis_suite/insights/`
-- `results/analysis_suite/run_manifest.json`
+1. Run all 6 detectors on teammate CSV (text, label columns)
+2. Aggregate metrics (AUROC, accuracy, F1, precision, recall per detector)
+3. Generate plots (ROC curves, confusion matrices, etc.)
+4. Create markdown report via Gemini API (summarizes findings)
 
-Windows PowerShell wrapper (from `detector_evaluation/`):
+**Outputs**:
 
-```powershell
-.\run_analysis_suite.ps1 -Device cpu -DetectGptPerturb 2
+- `results/teammate_eval/scores/` — Raw detector predictions
+- `results/teammate_eval/metrics.csv` — Performance summary table
+- `results/teammate_eval/figures/` — Visualization plots
+- `results/teammate_eval/reports/teammate_report.md` — AI-generated summary report
+
+**With Gemini API key** (for report generation):
+
+```bash
+$env:GEMINI_API_KEY = "your-api-key"
+python -m evaluation.evaluate_teammate \
+  --input teammate_data.csv \
+  --output-dir results/teammate_eval \
+  --api-key-env GEMINI_API_KEY
+```
+
+**Skip report** (if Gemini API unavailable):
+
+```bash
+python -m evaluation.evaluate_teammate \
+  --input teammate_data.csv \
+  --output-dir results/teammate_eval \
+  --skip-report
 ```
 
 ---
