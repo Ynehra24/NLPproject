@@ -1,5 +1,0 @@
-id,text,source,attack_type,attack_owner,generator_model
-va_001,"I forgot my charger and had to borrow one during lab.",human,none,none,na
-va_002,"We discussed the assignment rubric and clarified the evaluation criteria.",human,none,none,na
-va_003,"This model demonstrates improved generalization under controlled evaluation.",ai,none,none,gpt
-va_004,"The methodology emphasizes consistency, reproducibility, and clear reporting.",ai,none,none,gpt
