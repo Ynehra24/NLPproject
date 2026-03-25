@@ -24,6 +24,7 @@ detector_evaluation/IMPLEMENTATION_PLAN.txt
 detector_evaluation/docs/
 detector_evaluation/results/
 detector_evaluation/fix_unicode.py
+detector_evaluation/data/
 
 # Packaging/build artifacts
 *.so
@@ -41,3 +42,4 @@ characterlevelattacks/coreattacks
 characterlevelattacks/emojibased
 characterlevelattacks/humanvsai
 characterlevelattacks/stylometric
+
