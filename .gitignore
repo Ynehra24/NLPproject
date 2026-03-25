@@ -35,3 +35,9 @@ build/
 detector_evaluation/papers/
 read_papers.py
 read_papers_v2.py
+
+
+characterlevelattacks/coreattacks
+characterlevelattacks/emojibased
+characterlevelattacks/humanvsai
+characterlevelattacks/stylometric
