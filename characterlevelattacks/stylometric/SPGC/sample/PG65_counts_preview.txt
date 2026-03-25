@@ -1,0 +1,8 @@
+prime	2
+is	1
+not	1
+a	1
+by	1
+many	1
+definitions	1
+of	1
