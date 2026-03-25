@@ -28,101 +28,38 @@ All detectors operate on the same input contract, ensuring fair comparison and r
 
 ```
 detector_evaluation/ (Root)
-|-- .gitignore
-|-- IMPLEMENTATION_PLAN.txt
-|-- README.md
-|-- explanation.md
-|-- requirements.txt
-|
-|-- data/
-|   |-- processed/          (placeholder for preprocessed datasets)
-|   |-- raw/                (placeholder for raw input data)
-|   \-- splits/
-|       |-- test.csv        (evaluation set, 8 samples)
-|       |-- train.csv       (training set, 8 samples)
-|       \-- val.csv         (validation set, 8 samples)
-|
-|-- detectors/              (Detector implementations)
+|-- README.md                           # Primary documentation & API reference
+|-- explanation.md                      # Deep dive into project context & detector algorithms
+|-- requirements.txt                    # Python dependencies (pandas, torch, transformers, etc.)
+|-- detectors/                          # Detector implementations
 |   |-- __init__.py
-|   |-- common/             (Shared utilities)
+|   |-- common/                         # Shared utilities across all detectors
 |   |   |-- __init__.py
-|   |   |-- config.py       (configuration defaults)
-|   |   |-- interfaces.py   (detector base class)
-|   |   |-- io_utils.py     (CSV/JSONL loading)
-|   |   \-- metrics.py      (AUROC, AUPRC, F1, TPR@FPR computation)
-|   |
-|   |-- binoculars/         (Likelihood-ratio detector)
-|   |   |-- __init__.py
-|   |   \-- score.py        (inference via dual-model ratios)
-|   |
-|   |-- detectgpt/          (Curvature-based perturbation detector)
-|   |   |-- __init__.py
-|   |   |-- perturb.py      (T5-based perturbation)
-|   |   \-- score.py        (curvature scoring)
-|   |
-|   |-- fast_detectgpt/     (Token-discrepancy detector)
-|   |   |-- __init__.py
-|   |   \-- score.py        (fast z-score scoring)
-|   |
-|   |-- roberta_classifier/ (Fine-tuned supervised detector)
-|   |   |-- __init__.py
-|   |   |-- infer.py        (prediction on new data)
-|   |   |-- train.py        (training script)
-|   |   \-- model_card.txt  (model description)
-|   |
-|   |-- stats_baseline/     (Perplexity + token-rank baseline)
-|   |   |-- __init__.py
-|   |   \-- score.py        (statistical heuristic scoring)
-|   |
-|   \-- watermark/          (KGW green-list watermark detector)
-|       \-- score.py        (watermark z-score detection)
-|
-|-- docs/                   (Research papers & course materials)
-|   |-- 2210.07321v4.pdf    (DetectGPT paper)
-|   |-- 2305.10847v6.pdf
-|   |-- 2404.01907v1.pdf
-|   |-- 2406.11239v3.pdf
-|   |-- 2506.07001v2.pdf
-|   |-- 2506.08188v2.pdf
-|   \-- nlp_course_report.pdf
-|
-|-- evaluation/             (Evaluation pipeline & orchestration)
-|   |-- adaptive_retrain_stress.py   (iterative hard-example mining + retraining)
-|   |-- aggregate_results.py         (metrics computation by attack type)
-|   |-- plots.py                     (heatmap visualization)
-|   |-- run_all.py                   (unified detector orchestration)
-|   |-- transferability.py           (cross-detector vulnerability analysis)
-|   |-- validate_schema.py           (input validation)
-|   \-- watermark_robustness.py      (watermark delta analysis under attack)
-|
-\-- results/                (Generated outputs)
-    |-- attack_eval_tables/
-    |   \-- metrics_summary.csv
-    |
-    |-- detector_scores/    (Detector predictions)
-    |   |-- binoculars_scores.csv
-    |   |-- detectgpt_style_scores.csv
-    |   |-- fast_detectgpt_scores.csv
-    |   |-- kgw_watermark_scores.csv
-    |   |-- roberta_classifier_scores.csv
-    |   \-- stats_baseline_scores.csv
-    |
-    |-- figures/            (Visualizations)
-    |   |-- asr_by_detector_and_attack.png
-    |   \-- auroc_by_detector_and_attack.png
-    |
-    \-- roberta_model/      (Trained RoBERTa checkpoint)
-        |-- checkpoint-2/   (intermediate checkpoint)
-        |   |-- config.json
-        |   |-- model.safetensors
-        |   |-- optimizer.pt
-        |   |-- tokenizer.json
-        |   \-- trainer_state.json
-        |-- config.json
-        |-- metrics.json
-        |-- model.safetensors
-        |-- tokenizer.json
-        \-- training_args.bin
+|   |   |-- config.py                   # Configuration defaults & constants
+|   |   |-- interfaces.py               # Detector base class & interface
+|   |   |-- io_utils.py                 # CSV/JSONL loading & schema validation
+|   |   \-- metrics.py                  # AUROC, AUPRC, F1, TPR@FPR computation
+|   |-- binoculars/                     # Likelihood-ratio detector (observer/performer models)
+|   |-- detectgpt/                      # Curvature-based perturbation detector (T5 paraphrase)
+|   |-- fast_detectgpt/                 # Token-discrepancy z-score detector (GPT-2 based)
+|   |-- roberta_classifier/             # Fine-tuned supervised detector (RoBERTa base)
+|   |-- stats_baseline/                 # Statistical baseline (perplexity + token-rank)
+|   \-- watermark/                      # KGW green-list watermark detector
+\-- evaluation/                         # Evaluation pipeline & orchestration scripts
+  |-- adaptive_retrain_stress.py        # Iterative hard-example mining & retraining stress test
+  |-- aggregate_results.py              # Compute metrics (AUROC, F1, TPR@FPR) by attack type
+  |-- cross_paradigm_evasion.py         # Analyze cross-detector vulnerability transferability
+  |-- disagreement_ensemble.py          # Ensemble disagreement analysis
+  |-- evaluate_attack.py                # One-command workflow for attack data evaluation
+  |-- gemini_report_writer.py           # Generate markdown report via Gemini API
+  |-- latency_benchmark.py              # Runtime performance benchmarking
+  |-- merge_attack_data.py              # Merge multiple attack CSVs with auto-type inference
+  |-- plots.py                          # Generate heatmaps (AUROC & ASR by detector/attack)
+  |-- prepare_hc3.py                    # Prepare HC3 dataset splits
+  |-- run_all.py                        # Unified orchestrator for all 6 detectors
+  |-- transferability.py                # Cross-detector transferability analysis
+  |-- validate_schema.py                # Input validation against required schema
+  \-- watermark_robustness.py           # Watermark robustness under attack analysis
 ```
 
 ## Implemented Detectors
@@ -947,14 +884,14 @@ Outputs:
 - `results/adaptive_retrain/round_*/attack_eval_roberta_scores.csv`
 - `results/adaptive_retrain/adaptive_retrain_summary.csv`
 
-### 4) Evaluate Teammate Data
+### 4) Evaluate Attack Data
 
-One-command workflow to evaluate teammate-contributed data with all 6 detectors:
+One-command workflow to evaluate attack-contributed data with all 6 detectors:
 
 ```bash
-python -m evaluation.evaluate_teammate \
-  --input teammate_data.csv \
-  --output-dir results/teammate_eval \
+python -m evaluation.evaluate_attack \
+  --input attack_data.csv \
+  --output-dir results/attack_eval \
   --model-dir results/roberta_model \
   --device cpu \
   --detectgpt-perturb 2
@@ -962,34 +899,35 @@ python -m evaluation.evaluate_teammate \
 
 **Workflow**:
 
-1. Run all 6 detectors on teammate CSV (text, label columns)
-2. Aggregate metrics (AUROC, accuracy, F1, precision, recall per detector)
-3. Generate plots (ROC curves, confusion matrices, etc.)
-4. Create markdown report via Gemini API (summarizes findings)
+1. Normalize attack CSV (requires `text`; auto-adds `id`; converts `label` to `source` when available)
+2. Run all 6 detectors on normalized input
+3. Aggregate metrics (AUROC, accuracy, F1, precision, recall per detector)
+4. Generate plots (ROC curves, confusion matrices, etc.)
+5. Create markdown report via Gemini API (summarizes findings)
 
 **Outputs**:
 
-- `results/teammate_eval/scores/` — Raw detector predictions
-- `results/teammate_eval/metrics.csv` — Performance summary table
-- `results/teammate_eval/figures/` — Visualization plots
-- `results/teammate_eval/reports/teammate_report.md` — AI-generated summary report
+- `results/attack_eval/scores/` — Raw detector predictions
+- `results/attack_eval/metrics.csv` — Performance summary table
+- `results/attack_eval/figures/` — Visualization plots
+- `results/attack_eval/reports/attack_report.md` — AI-generated summary report
 
 **With Gemini API key** (for report generation):
 
 ```bash
 $env:GEMINI_API_KEY = "your-api-key"
-python -m evaluation.evaluate_teammate \
-  --input teammate_data.csv \
-  --output-dir results/teammate_eval \
+python -m evaluation.evaluate_attack \
+  --input attack_data.csv \
+  --output-dir results/attack_eval \
   --api-key-env GEMINI_API_KEY
 ```
 
 **Skip report** (if Gemini API unavailable):
 
 ```bash
-python -m evaluation.evaluate_teammate \
-  --input teammate_data.csv \
-  --output-dir results/teammate_eval \
+python -m evaluation.evaluate_attack \
+  --input attack_data.csv \
+  --output-dir results/attack_eval \
   --skip-report
 ```
 

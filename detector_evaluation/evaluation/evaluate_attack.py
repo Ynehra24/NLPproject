@@ -1,4 +1,4 @@
-"""Simple one-command evaluation for teammate data.
+"""Simple one-command evaluation for attack data.
 
 Runs all 6 detectors → aggregates metrics → generates plots → creates report.
 """
@@ -10,16 +10,52 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 
 def run_cmd(cmd: list[str]) -> None:
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, check=True)
 
 
+def normalize_input(input_path: Path, output_dir: Path) -> Path:
+    """Ensure detector input has required schema columns.
+
+    Required by detector loader: id, text.
+    For evaluation metrics, source is also needed. If source is missing and label
+    exists, convert label 0/1 to source human/ai.
+    """
+    df = pd.read_csv(input_path)
+
+    if "text" not in df.columns:
+        raise ValueError("Input CSV must contain 'text' column")
+
+    if "id" not in df.columns:
+        df["id"] = [f"sample_{i}" for i in range(len(df))]
+
+    if "source" not in df.columns:
+        if "label" in df.columns:
+            mapped = df["label"].astype(str).str.strip().str.lower().map(
+                {"0": "human", "1": "ai", "human": "human", "ai": "ai"}
+            )
+            if mapped.isna().any():
+                bad = sorted(df.loc[mapped.isna(), "label"].astype(str).unique().tolist())
+                raise ValueError(f"Invalid label values for conversion to source: {bad}")
+            df["source"] = mapped
+
+    normalized_path = output_dir / "_normalized_input.csv"
+    df.to_csv(normalized_path, index=False)
+    return normalized_path
+
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Evaluate teammate data with all detectors")
-    parser.add_argument("--input", required=True, help="Teammate CSV file (text, label columns)")
-    parser.add_argument("--output-dir", default="results/teammate_eval", help="Output directory")
+    parser = argparse.ArgumentParser(description="Evaluate attack data with all detectors")
+    parser.add_argument(
+        "--input",
+        required=True,
+        help="Attack CSV file. Requires text; id/source are auto-created when possible.",
+    )
+    parser.add_argument("--output-dir", default="results/attack_eval", help="Output directory")
     parser.add_argument("--model-dir", default="results/roberta_model", help="Fine-tuned RoBERTa model")
     parser.add_argument("--device", default="cpu", help="Device (cpu/gpu)")
     parser.add_argument("--detectgpt-perturb", type=int, default=2, help="DetectGPT perturbations")
@@ -44,6 +80,7 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     scores_dir = output_dir / "scores"
     figures_dir = output_dir / "figures"
+    normalized_input = normalize_input(input_path, output_dir)
     
     python = sys.executable
     
@@ -57,7 +94,7 @@ def main() -> None:
             "-m",
             "evaluation.run_all",
             "--input",
-            str(input_path),
+            str(normalized_input),
             "--output-dir",
             str(scores_dir),
             "--device",
@@ -83,8 +120,6 @@ def main() -> None:
             python,
             "-m",
             "evaluation.aggregate_results",
-            "--input",
-            str(input_path),
             "--scores-dir",
             str(scores_dir),
             "--output",
@@ -94,7 +129,7 @@ def main() -> None:
     
     print(f"\n✓ Metrics saved to: {metrics_csv}")
     print("\nMetrics summary:")
-    run_cmd(["python", "-c", f"import pandas; df = pandas.read_csv('{metrics_csv}'); print(df.to_string(index=False))"])
+    run_cmd([python, "-c", f"import pandas; df = pandas.read_csv('{metrics_csv}'); print(df.to_string(index=False))"])
     
     print("\n" + "="*60)
     print("STEP 3: Generating plots...")
@@ -106,10 +141,8 @@ def main() -> None:
             python,
             "-m",
             "evaluation.plots",
-            "--scores-dir",
-            str(scores_dir),
-            "--test-file",
-            str(input_path),
+            "--metrics",
+            str(metrics_csv),
             "--output-dir",
             str(figures_dir),
         ]
@@ -133,13 +166,13 @@ def main() -> None:
                 "--analysis-root",
                 str(output_dir),
                 "--output",
-                str(reports_dir / "teammate_report.md"),
+                str(reports_dir / "attack_report.md"),
                 "--api-key-env",
                 args.api_key_env,
             ]
         )
         
-        print(f"\n✓ Report saved to: {reports_dir / 'teammate_report.md'}")
+        print(f"\n✓ Report saved to: {reports_dir / 'attack_report.md'}")
     
     print("\n" + "="*60)
     print("✓ EVALUATION COMPLETE")
@@ -149,7 +182,7 @@ def main() -> None:
     print(f"  - Metrics table: {metrics_csv}")
     print(f"  - Plots: {figures_dir}/")
     if not args.skip_report:
-        print(f"  - Report: {reports_dir}/teammate_report.md")
+        print(f"  - Report: {reports_dir}/attack_report.md")
 
 
 if __name__ == "__main__":
