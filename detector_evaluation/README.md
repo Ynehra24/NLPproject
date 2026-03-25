@@ -947,6 +947,47 @@ Outputs:
 - `results/adaptive_retrain/round_*/attack_eval_roberta_scores.csv`
 - `results/adaptive_retrain/adaptive_retrain_summary.csv`
 
+### 4) One-Command Analysis Suite
+
+Runs the full post-training workflow end-to-end in one command:
+
+1. Run all detectors on train/val/test
+2. Aggregate metrics and generate plots for each split
+3. Build one combined all-splits table
+4. Build detector mean/std summary across splits
+5. Run transferability, watermark robustness, cross-paradigm evasion,
+   disagreement ensemble, and latency benchmark
+
+```bash
+python -m evaluation.analysis_suite \
+  --train data/splits/train.csv \
+  --val data/splits/val.csv \
+  --test data/splits/test.csv \
+  --model-dir results/roberta_model \
+  --device cpu \
+  --detectgpt-perturb 2 \
+  --output-root results/analysis_suite
+```
+
+Main outputs:
+
+- `results/analysis_suite/tables/metrics_train.csv`
+- `results/analysis_suite/tables/metrics_val.csv`
+- `results/analysis_suite/tables/metrics_test.csv`
+- `results/analysis_suite/tables/metrics_all_splits.csv`
+- `results/analysis_suite/tables/detector_summary_across_splits.csv`
+- `results/analysis_suite/figures/train/`
+- `results/analysis_suite/figures/val/`
+- `results/analysis_suite/figures/test/`
+- `results/analysis_suite/insights/`
+- `results/analysis_suite/run_manifest.json`
+
+Windows PowerShell wrapper (from `detector_evaluation/`):
+
+```powershell
+.\run_analysis_suite.ps1 -Device cpu -DetectGptPerturb 2
+```
+
 ---
 
 **Last updated**: March 14, 2026
