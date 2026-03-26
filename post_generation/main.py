@@ -184,8 +184,8 @@ def run_evaluate(config: Config, checkpoint_path: str, results_path: str) -> Non
         ).to(device)
         with torch.no_grad():
             gen_ids = evader_backbone.generate(
-                enc["input_ids"],
-                enc["attention_mask"],
+                input_ids=enc["input_ids"],
+                attention_mask=enc["attention_mask"],
                 num_beams=config.model.num_beams,
                 max_length=config.model.max_length,
                 early_stopping=True,
