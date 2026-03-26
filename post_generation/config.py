@@ -80,7 +80,8 @@ class LossConfig:
 @dataclass
 class TrainingConfig:
     """Training-loop hyperparameters."""
-    batch_size: int = 8
+    batch_size: int = 1
+    gradient_accumulation_steps: int = 8
     learning_rate: float = 5e-5
     num_epochs: int = 3
     warmup_ratio: float = 0.1
@@ -141,7 +142,7 @@ class Config:
     training: TrainingConfig = field(default_factory=TrainingConfig)
     eval: EvalConfig = field(default_factory=EvalConfig)
 
-    device: str = "cpu"          # "cuda" | "cpu" | "mps"
+    device: str = "mps"          # "cuda" | "cpu" | "mps"
     fp16: bool = False             # mixed-precision training
     dataloader_workers: int = 0
 

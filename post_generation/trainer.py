@@ -230,18 +230,13 @@ class EvaderTrainer:
 
     def _one_step(self, batch: Dict) -> Tuple[torch.Tensor, Dict]:
         """
-        Execute a single gradient update step.
+        Execute a single gradient update step (with external accumulation).
 
         Returns (loss, info_dict).
         """
         input_ids = batch["input_ids"].to(self.device)
         attention_mask = batch["attention_mask"].to(self.device)
 
-        # Retrieve pre-computed embeddings for this batch (by index is tricky
-        # because DataLoader shuffles; we therefore skip per-batch look-up
-        # and pass None here — set sentence_encoder=None in config to disable
-        # or sub-class this trainer to align embeddings with batch indices).
-        # TODO: implement index-aligned embedding look-up if sentence_encoder used.
         input_embeddings = None
 
         print(f"Step {self.global_step + 1} forward...", flush=True)
@@ -252,27 +247,16 @@ class EvaderTrainer:
                 attention_mask=attention_mask,
                 input_embeddings=input_embeddings,
             )
+            # Scale loss by accumulation steps
+            grad_accum = getattr(self.tcfg, "gradient_accumulation_steps", 1)
+            l_total = l_total / grad_accum
 
-        self.optimiser.zero_grad()
-
+        print(f"Step {self.global_step + 1} backward...", flush=True)
         if use_fp16:
             self.scaler.scale(l_total).backward()
-            self.scaler.unscale_(self.optimiser)
-            nn.utils.clip_grad_norm_(
-                self.model.evader.parameters(), self.tcfg.grad_clip
-            )
-            self.scaler.step(self.optimiser)
-            self.scaler.update()
         else:
-            print(f"Step {self.global_step + 1} backward...", flush=True)
             l_total.backward()
-            nn.utils.clip_grad_norm_(
-                self.model.evader.parameters(), self.tcfg.grad_clip
-            )
-            self.optimiser.step()
 
-        self.scheduler.step()
-        print(f"Step {self.global_step + 1} done!", flush=True)
         return l_total, info
 
     # ------------------------------------------------------------------
@@ -319,11 +303,30 @@ class EvaderTrainer:
 
         for epoch in range(1, self.tcfg.num_epochs + 1):
             epoch_loss = 0.0
+            grad_accum = getattr(self.tcfg, "gradient_accumulation_steps", 1)
+            
+            # Start clean
+            self.optimiser.zero_grad()
 
             for step, batch in enumerate(self.train_loader, 1):
                 loss, info = self._one_step(batch)
-                epoch_loss += loss.item()
+                epoch_loss += loss.item() * grad_accum
                 self.global_step += 1
+                
+                # Step optimizer based on accumulation steps
+                if self.global_step % grad_accum == 0 or step == len(self.train_loader):
+                    if self.scaler is not None:
+                        self.scaler.unscale_(self.optimiser)
+                        nn.utils.clip_grad_norm_(self.model.evader.parameters(), self.tcfg.grad_clip)
+                        self.scaler.step(self.optimiser)
+                        self.scaler.update()
+                    else:
+                        nn.utils.clip_grad_norm_(self.model.evader.parameters(), self.tcfg.grad_clip)
+                        self.optimiser.step()
+                        
+                    self.scheduler.step()
+                    self.optimiser.zero_grad()
+                    print(f"Step {self.global_step} optimization done!", flush=True)
 
                 # Console logging
                 if self.global_step % self.tcfg.log_every == 0:
