@@ -1,0 +1,51 @@
+10:50:14 | INFO | main | Loading surrogate detector: Hello-SimpleAI/chatgpt-detector-roberta
+10:50:14 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+10:50:14 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Hello-SimpleAI/chatgpt-detector-roberta/d2b342c61775d5dd0221808a79983ed3b86ffd86/config.json "HTTP/1.1 200 OK"
+10:50:14 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/main/model.safetensors "HTTP/1.1 404 Not Found"
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]Loading weights: 100%|██████████| 201/201 [00:00<00:00, 65151.09it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: Hello-SimpleAI/chatgpt-detector-roberta
+Key                             | Status     |  | 
+--------------------------------+------------+--+-
+roberta.embeddings.position_ids | UNEXPECTED |  | 
+
+[3mNotes:
+- UNEXPECTED[3m	:can be ignored when loading from different task/architecture; not ok if you expect identical arch.[0m
+10:50:15 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta "HTTP/1.1 200 OK"
+10:50:15 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+10:50:15 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Hello-SimpleAI/chatgpt-detector-roberta/d2b342c61775d5dd0221808a79983ed3b86ffd86/config.json "HTTP/1.1 200 OK"
+10:50:15 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/commits/main "HTTP/1.1 200 OK"
+10:50:15 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+10:50:15 | WARNING | huggingface_hub.utils._http | Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+10:50:15 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Hello-SimpleAI/chatgpt-detector-roberta/d2b342c61775d5dd0221808a79983ed3b86ffd86/tokenizer_config.json "HTTP/1.1 200 OK"
+10:50:15 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/discussions?p=0 "HTTP/1.1 200 OK"
+10:50:15 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+10:50:15 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/commits/refs%2Fpr%2F2 "HTTP/1.1 200 OK"
+10:50:16 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+10:50:16 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/refs%2Fpr%2F2/model.safetensors.index.json "HTTP/1.1 404 Not Found"
+10:50:16 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/facebook/bart-base/resolve/main/tokenizer_config.json "HTTP/1.1 404 Not Found"
+10:50:16 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/refs%2Fpr%2F2/model.safetensors "HTTP/1.1 302 Found"
+10:50:16 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/facebook/bart-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+10:50:17 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/facebook/bart-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+10:50:17 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/facebook/bart-base/resolve/main/vocab.json "HTTP/1.1 307 Temporary Redirect"
+10:50:17 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/bart-base/aadd2ab0ae0c8268c7c9693540e9904811f36177/vocab.json "HTTP/1.1 200 OK"
+10:50:17 | INFO | data_utils | HumanCorpusStats loaded from outputs/checkpoints/human_stats.json
+10:50:17 | INFO | evader | Loading evader backbone: facebook/bart-base
+10:50:17 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/facebook/bart-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+10:50:17 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/bart-base/aadd2ab0ae0c8268c7c9693540e9904811f36177/config.json "HTTP/1.1 200 OK"
+10:50:17 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/facebook/bart-base/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+Loading weights:   0%|          | 0/259 [00:00<?, ?it/s]Loading weights: 100%|██████████| 259/259 [00:00<00:00, 6473.39it/s]
+10:50:18 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/facebook/bart-base/resolve/main/generation_config.json "HTTP/1.1 404 Not Found"
+10:50:18 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/facebook/bart-base/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+10:50:18 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/bart-base/aadd2ab0ae0c8268c7c9693540e9904811f36177/config.json "HTTP/1.1 200 OK"
+10:50:18 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/facebook/bart-base/resolve/main/tokenizer_config.json "HTTP/1.1 404 Not Found"
+10:50:18 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/facebook/bart-base/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+10:50:19 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/facebook/bart-base/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+10:50:19 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/facebook/bart-base/resolve/main/vocab.json "HTTP/1.1 307 Temporary Redirect"
+10:50:19 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/facebook/bart-base/aadd2ab0ae0c8268c7c9693540e9904811f36177/vocab.json "HTTP/1.1 200 OK"
+10:50:19 | INFO | pseudo_embeddings | PseudoEmbeddingInjector ready | detector=RobertaForSequenceClassification | emb_dim=768
+10:50:19 | INFO | stylometric_loss | StylometricLoss | sentence_end_ids=[4, 50118, 328, 116, 734, 479] | target_entropy=5.496 | n_bins=25 | burstiness_w=0.70 | entropy_w=0.30
+10:50:19 | INFO | evader | StyleAwareEvader ready | α=0.40 β=0.30 γ=0.30
+10:50:19 | INFO | data_utils | AITextDataset loaded 28040 samples from data/train_ai_text.txt
+10:50:19 | INFO | data_utils | AITextDataset loaded 7053 samples from data/eval_ai_text.txt
+10:50:19 | INFO | trainer | Training start | epochs=3 | steps_per_epoch=3505 | total_steps=10515 | device=cpu

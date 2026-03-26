@@ -142,7 +142,7 @@ def train_repeater(
         optimiser.step()
         optimiser.zero_grad()
 
-        if step % 500 == 0:
+        if step % 10 == 0:
             logger.info("[Repeater SFT] step %d / %d  loss=%.4f", step, num_steps, loss.item())
 
     logger.info("Repeater SFT complete.")
@@ -212,7 +212,7 @@ class EvaderTrainer:
 
         # Mixed-precision scaler
         self.scaler = (
-            torch.cuda.amp.GradScaler()
+            torch.amp.GradScaler("cuda")
             if config.fp16 and torch.cuda.is_available()
             else None
         )
@@ -244,8 +244,9 @@ class EvaderTrainer:
         # TODO: implement index-aligned embedding look-up if sentence_encoder used.
         input_embeddings = None
 
+        print(f"Step {self.global_step + 1} forward...", flush=True)
         use_fp16 = self.scaler is not None
-        with torch.cuda.amp.autocast(enabled=use_fp16):
+        with torch.autocast(device_type="mps", enabled=use_fp16):
             l_total, info = self.model.training_step(
                 input_ids=input_ids,
                 attention_mask=attention_mask,
@@ -263,6 +264,7 @@ class EvaderTrainer:
             self.scaler.step(self.optimiser)
             self.scaler.update()
         else:
+            print(f"Step {self.global_step + 1} backward...", flush=True)
             l_total.backward()
             nn.utils.clip_grad_norm_(
                 self.model.evader.parameters(), self.tcfg.grad_clip
@@ -270,6 +272,7 @@ class EvaderTrainer:
             self.optimiser.step()
 
         self.scheduler.step()
+        print(f"Step {self.global_step + 1} done!", flush=True)
         return l_total, info
 
     # ------------------------------------------------------------------
@@ -367,6 +370,7 @@ class EvaderTrainer:
             **info,
         }
         self._log_buffer.append(row)
+        self._write_log()  # Save continuously so we don't lose stats
         logger.info(
             "[E%d S%d] loss=%.4f l_adv=%.4f l_sem=%.4f l_style=%.4f "
             "hp_surr=%.3f kl_burst=%.4f",

@@ -24,7 +24,7 @@ class ModelConfig:
     # Surrogate detector: RoBERTa fine-tuned as binary (AI vs Human) classifier.
     # This is the WHITE-BOX model used during training.
     # At eval time we also run against unseen black-box detectors.
-    surrogate_detector_name: str = "roberta-base"
+    surrogate_detector_name: str = "Hello-SimpleAI/chatgpt-detector-roberta"
 
     # Maximum sequence length (tokens).  512 follows both papers.
     max_length: int = 512
@@ -80,9 +80,9 @@ class LossConfig:
 @dataclass
 class TrainingConfig:
     """Training-loop hyperparameters."""
-    batch_size: int = 16
+    batch_size: int = 8
     learning_rate: float = 5e-5
-    num_epochs: int = 5
+    num_epochs: int = 3
     warmup_ratio: float = 0.1
     weight_decay: float = 0.01
     grad_clip: float = 1.0
@@ -97,13 +97,13 @@ class TrainingConfig:
     human_corpus_path: str = "data/human_corpus.txt"
 
     # How many samples to use when fitting the human baseline histogram.
-    human_corpus_sample_size: int = 10_000
+    human_corpus_sample_size: int = 10000
 
     # Checkpoint directory.
     output_dir: str = "outputs/checkpoints"
 
     # Log every N steps.
-    log_every: int = 50
+    log_every: int = 2
 
     # Save checkpoint every N steps (0 = epoch-level only).
     save_every: int = 500
@@ -127,7 +127,7 @@ class EvalConfig:
     bertscore_model: str = "roberta-large"
 
     # Number of evaluation samples.
-    eval_sample_size: int = 1_000
+    eval_sample_size: int = 500
 
     # Path to save evaluation results JSON.
     results_path: str = "outputs/eval_results.json"
@@ -141,9 +141,9 @@ class Config:
     training: TrainingConfig = field(default_factory=TrainingConfig)
     eval: EvalConfig = field(default_factory=EvalConfig)
 
-    device: str = "cuda"          # "cuda" | "cpu" | "mps"
-    fp16: bool = True             # mixed-precision training
-    dataloader_workers: int = 4
+    device: str = "cpu"          # "cuda" | "cpu" | "mps"
+    fp16: bool = False             # mixed-precision training
+    dataloader_workers: int = 0
 
 
 # ---------------------------------------------------------------------------
