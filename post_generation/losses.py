@@ -247,12 +247,15 @@ class SemanticLoss(nn.Module):
 
 class JointEvaderLoss(nn.Module):
     """
-    L_total = α · L_adv  +  β · L_sem  +  γ · L_style
+    L_total = α · L_adv  +  β · L_sem  +  γ · L_style  +  δ · L_fluency
 
-    This is the complete tri-objective loss for the Stylometry-Aware
+    This is the complete four-objective loss for the Stylometry-Aware
     Differentiable Paraphraser.  It wraps AdversarialLoss, SemanticLoss,
-    and StylometricLoss, exposes a single forward() method, and returns
+    StylometricLoss, and FluencyLoss, exposes a single forward() method, and returns
     a rich diagnostics dict for tensorboard/wandb logging.
+    
+    The fluency loss penalizes low-entropy (repetitive) outputs, preventing
+    degenerate solutions like "BraBraBra...".
     """
 
     def __init__(
@@ -260,21 +263,66 @@ class JointEvaderLoss(nn.Module):
         adv_loss: AdversarialLoss,
         sem_loss: SemanticLoss,
         sty_loss: StylometricLoss,
-        alpha: float = 0.40,
-        beta: float = 0.30,
+        alpha: float = 0.20,
+        beta: float = 0.40,
         gamma: float = 0.30,
+        delta: float = 0.10,
     ):
         super().__init__()
         self.adv_loss = adv_loss
         self.sem_loss = sem_loss
         self.sty_loss = sty_loss
 
-        assert abs(alpha + beta + gamma - 1.0) < 1e-4, (
-            f"Loss weights must sum to 1.0, got α={alpha}, β={beta}, γ={gamma}"
+        # Weights now include fluency term
+        total_weight = alpha + beta + gamma + delta
+        assert abs(total_weight - 1.0) < 1e-4, (
+            f"Loss weights must sum to 1.0, got α={alpha}, β={beta}, γ={gamma}, δ={delta} (sum={total_weight})"
         )
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
+        self.delta = delta
+
+    def _fluency_loss(
+        self,
+        prob_matrix: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+    ) -> Tuple[torch.Tensor, dict]:
+        """
+        Penalize outputs with very low entropy (model is highly certain/repetitive).
+        
+        Low entropy across tokens indicates the model is outputting the same token
+        repeatedly with high confidence, which prevents corruption like "BraBraBra...".
+        
+        Args:
+            prob_matrix: (B, L, V) probability distribution over vocabulary.
+            attention_mask: (B, L) optional mask for padding tokens.
+        
+        Returns:
+            l_fluency: Scalar fluency loss.
+            info: Dict with diagnostic values.
+        """
+        # Entropy per token: -Σ p log p
+        entropy = -(prob_matrix * torch.log(prob_matrix + 1e-10)).sum(dim=-1)  # (B, L)
+        
+        # Penalize very low entropy (certain/repetitive predictions)
+        # For a vocab of ~50k, max entropy ≈ log(50000) ≈ 10.8
+        # We want to encourage diversity, so target min_entropy around 2.0
+        min_entropy_threshold = 2.0
+        low_entropy_penalty = torch.relu(min_entropy_threshold - entropy)  # (B, L)
+        
+        # Apply attention mask if available
+        if attention_mask is not None:
+            mask = attention_mask.float()
+            loss = (low_entropy_penalty * mask).sum() / (mask.sum() + 1e-8)
+        else:
+            loss = low_entropy_penalty.mean()
+        
+        info = {
+            "l_fluency": loss.item(),
+            "mean_entropy": entropy.mean().item(),
+        }
+        return loss, info
 
     def forward(
         self,
@@ -306,8 +354,16 @@ class JointEvaderLoss(nn.Module):
         # -------- L_style --------
         l_style, style_info = self.sty_loss(prob_matrix)
 
+        # -------- L_fluency --------
+        l_fluency, fluency_info = self._fluency_loss(prob_matrix, attention_mask)
+
         # -------- L_total --------
-        l_total = self.alpha * l_adv + self.beta * l_sem + self.gamma * l_style
+        l_total = (
+            self.alpha * l_adv
+            + self.beta * l_sem
+            + self.gamma * l_style
+            + self.delta * l_fluency
+        )
 
         # Compute a "human probability" for quick monitoring
         with torch.no_grad():
@@ -321,5 +377,6 @@ class JointEvaderLoss(nn.Module):
             "human_prob_surrogate": human_prob,
             **sem_info,
             **style_info,
+            **fluency_info,
         }
         return l_total, info

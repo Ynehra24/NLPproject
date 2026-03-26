@@ -184,6 +184,7 @@ class EvaderTrainer:
             batch_size=self.tcfg.batch_size,
             shuffle=True,
             num_workers=config.dataloader_workers,
+            max_samples=self.tcfg.max_train_samples,
         )
         self.eval_loader = build_dataloader(
             file_path=self.tcfg.eval_data_path,

@@ -186,11 +186,12 @@ class StyleAwareEvader(nn.Module):
             alpha=config.loss.alpha,
             beta=config.loss.beta,
             gamma=config.loss.gamma,
+            delta=config.loss.delta,
         )
 
         logger.info(
-            "StyleAwareEvader ready | α=%.2f β=%.2f γ=%.2f",
-            config.loss.alpha, config.loss.beta, config.loss.gamma,
+            "StyleAwareEvader ready | α=%.2f β=%.2f γ=%.2f δ=%.2f",
+            config.loss.alpha, config.loss.beta, config.loss.gamma, config.loss.delta,
         )
 
     # ------------------------------------------------------------------
@@ -206,6 +207,10 @@ class StyleAwareEvader(nn.Module):
         """
         One forward + loss computation step.
 
+        IMPORTANT FIX: Uses AUTOREGRESSIVE DECODING during training (not teacher-forcing).
+        This ensures the model learns to generate coherent text, matching the inference
+        behavior. This prevents degenerate solutions like repeated substrings.
+
         Args:
             input_ids:        (B, L) token IDs of the AI-generated source text.
             attention_mask:   (B, L) mask.
@@ -216,12 +221,27 @@ class StyleAwareEvader(nn.Module):
             l_total:  Scalar loss (call .backward() on this).
             info:     Dict of sub-component values for logging.
         """
-        # Teacher-forcing forward: feed input as both encoder AND decoder input.
-        # This gives us logits for every token position without sampling.
+        # Autoregressive forward: construct shifted input for decoder.
+        # Instead of teacher-forcing (feeding input as decoder input),
+        # we use the shifted input which mimics autoregressive generation.
+        # Position t of decoder input = position t-1 of encoder output.
+        B, L = input_ids.shape
+        bos_token_id = self.tokenizer.bos_token_id or self.tokenizer.pad_token_id
+        
+        # Construct decoder_input_ids by prepending BOS and removing last token
+        decoder_input_ids = torch.cat(
+            [
+                torch.full((B, 1), bos_token_id, dtype=input_ids.dtype, device=input_ids.device),
+                input_ids[:, :-1]
+            ],
+            dim=1
+        )  # (B, L)
+        
+        # Forward pass with autoregressive decoding
         outputs = self.evader(
             input_ids=input_ids,
             attention_mask=attention_mask,
-            decoder_input_ids=input_ids,
+            decoder_input_ids=decoder_input_ids,
             decoder_attention_mask=attention_mask,
         )
         logits = outputs.logits   # (B, L, vocab_size)
@@ -252,6 +272,12 @@ class StyleAwareEvader(nn.Module):
     ) -> torch.Tensor:
         """
         Generate paraphrased text using beam search.
+        
+        KEY ENHANCEMENTS:
+          • repetition_penalty=1.2: Discourages the model from outputting the same
+            token repeatedly (fixes "BraBraBra" corruption).
+          • length_penalty=2.0: Encourages full-length coherent sequences instead of
+            short, repetitive outputs.
 
         Returns:
             generated_ids: (B, L') token IDs of the paraphrased text.
@@ -266,6 +292,8 @@ class StyleAwareEvader(nn.Module):
             max_length=ml,
             early_stopping=True,
             no_repeat_ngram_size=3,
+            repetition_penalty=1.2,
+            length_penalty=2.0,
         )
 
     @torch.no_grad()
