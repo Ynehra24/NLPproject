@@ -223,7 +223,19 @@ class PseudoEmbeddingInjector(nn.Module):
         Returns:
             logits: (batch, num_labels)  — raw classifier output.
         """
+        # -------- DEBUG: Check input sanity --------
+        if torch.isnan(prob_matrix).any():
+            logger.error("NaN detected in prob_matrix input to PseudoEmbeddingInjector!")
+        if torch.isinf(prob_matrix).any():
+            logger.error("Inf detected in prob_matrix input to PseudoEmbeddingInjector!")
+        
         pseudo_emb = self.compute_pseudo_embeddings(prob_matrix)   # (B, L, H)
+
+        # -------- DEBUG: Check pseudo-embeddings --------
+        if torch.isnan(pseudo_emb).any():
+            logger.error("NaN detected in pseudo_emb after matmul!")
+        if torch.isinf(pseudo_emb).any():
+            logger.error("Inf detected in pseudo_emb after matmul!")
 
         # HuggingFace models accept `inputs_embeds` directly, which bypasses
         # the word-embedding lookup but still runs positional & type embeddings.
@@ -231,6 +243,19 @@ class PseudoEmbeddingInjector(nn.Module):
             inputs_embeds=pseudo_emb,
             attention_mask=attention_mask,
         )
+        
+        # -------- DEBUG: Check detector outputs --------
+        if torch.isnan(outputs.logits).any():
+            logger.error("NaN detected in detector logits!")
+        if torch.isinf(outputs.logits).any():
+            logger.error("Inf detected in detector logits!")
+        
+        # -------- DEBUG: Monitor gradient flow if this is part of backward pass --------
+        if prob_matrix.grad is not None:
+            grad_norm = prob_matrix.grad.abs().mean()
+            if grad_norm > 0:
+                logger.debug(f"Pseudo-embedding gradient norm: {grad_norm:.6f}")
+        
         return outputs.logits
 
     # ------------------------------------------------------------------

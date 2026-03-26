@@ -209,6 +209,7 @@ class AITextDataset(Dataset):
         tokenizer: PreTrainedTokenizer,
         max_length: int = 512,
         skip_empty: bool = True,
+        max_samples: Optional[int] = None,
     ):
         self.tokenizer = tokenizer
         self.max_length = max_length
@@ -218,6 +219,10 @@ class AITextDataset(Dataset):
 
         if skip_empty:
             raw = [t for t in raw if len(t) > 20]
+
+        # Limit samples for quick testing (e.g., 500 samples for ~30-45min training)
+        if max_samples is not None and len(raw) > max_samples:
+            raw = raw[:max_samples]
 
         self.texts = raw
         logger.info("AITextDataset loaded %d samples from %s", len(self.texts), file_path)
@@ -248,9 +253,19 @@ def build_dataloader(
     batch_size: int,
     shuffle: bool = True,
     num_workers: int = 4,
+    max_samples: Optional[int] = None,
 ) -> DataLoader:
-    """Convenience wrapper that constructs a DataLoader from a text file."""
-    ds = AITextDataset(file_path, tokenizer, max_length=max_length)
+    """Convenience wrapper that constructs a DataLoader from a text file.
+    
+    Args:
+        max_samples: If set, limit dataset to this many samples (useful for quick testing).
+    """
+    ds = AITextDataset(
+        file_path,
+        tokenizer,
+        max_length=max_length,
+        max_samples=max_samples,
+    )
     return DataLoader(
         ds,
         batch_size=batch_size,
