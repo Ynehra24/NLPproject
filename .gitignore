@@ -17,14 +17,18 @@ Thumbs.db
 
 # Local/generated artifacts
 attacks_outputs/
+read_papers.py
 explanation.md
 
 # Project-local docs/plans and outputs
 detector_evaluation/IMPLEMENTATION_PLAN.txt
 detector_evaluation/docs/
 detector_evaluation/results/
-detector_evaluation/fix_unicode.py
 detector_evaluation/data/
+detector_evaluation/reports/
+detector_evaluation/prompts/
+detector_evaluation/papers/
+detector_evaluation/.env
 
 # Packaging/build artifacts
 *.so
@@ -33,13 +37,11 @@ detector_evaluation/data/
 dist/
 build/
 
-detector_evaluation/papers/
-read_papers.py
-read_papers_v2.py
-
-
 characterlevelattacks/coreattacks
 characterlevelattacks/emojibased
 characterlevelattacks/humanvsai
 characterlevelattacks/stylometric
 
+
+post_generation/data/
+post_generation/outputs

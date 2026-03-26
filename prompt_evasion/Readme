@@ -1,0 +1,55 @@
+
+Stylistic Persona-Augmented Prompt Optimizer
+Project Component: Prompt-Level Evasion & Stylometric Optimization
+
+Format: Single-Notebook Research Implementation (.ipynb)
+
+This repository contains the full implementation of a Persona-Augmented Prompt Optimizer. The system is designed to transform AI-generated text into human-like prose by jointly optimizing for Adversarial Evasion, Semantic Consistency, and Stylometric Naturalness.
+
+Module Overview
+Most AI text humanizers focus solely on breaking statistical patterns (like perplexity), often resulting in text that feels unnatural. This framework introduces a Persona-Augmented approach that:
+
+Extracts Stylometric Fingerprints: Profiles human writing patterns (e.g., contraction rates, hedging density, and sentence variance).
+
+Optimizes via Hybrid Loss: Employs a weighted objective function L = λL_adv + βL_sem + γL_persona.
+
+Stress-Tests Detectors: Specifically targets Neural classifiers (RoBERTa) to expose vulnerabilities in supervised detection models.
+
+Methodology & Loss Function
+The optimizer selects the best rewrite candidate by minimizing a three-part loss:
+
+Adversarial Loss (L_adv): Minimizes the "AI-probability" score from the surrogate RoBERTa detector.
+
+Semantic Consistency Loss (L_sem): Uses BERTScore to ensure the humanized output preserves the original meaning.
+
+Persona Alignment Loss (L_persona): A novel constraint using KL-Divergence to align the output's style with a target human persona profile.
+
+6-Metric Evaluation Protocol
+The performance is validated using a rigorous evaluation suite implemented within the notebook:
+
+Metric	Goal	Description
+Evasion Rate	High (↑)	Percentage of samples that successfully bypass the detector.
+Avg AI Score	Low (↓)	The raw probability score assigned by the AI detector.
+BERTScore F1	High (↑)	Semantic similarity score to ensure meaning preservation.
+Perplexity	Balanced	Fluency and predictability measured via GPT-2.
+FK Grade	Human-like	Flesch-Kincaid grade level to match human readability.
+Persona Align	High (↑)	Exponential negative KL-Div relative to the human profile.
+Implementation & Outputs
+The entire project is contained within Prompt_Evasionn.ipynb. Running the notebook sequentially will:
+
+Generate Rewrites: Process AI-generated text using the Persona-Augmented method.
+
+Execute Baselines: Run comparative tests against SICO and SDA methods.
+
+Perform λ-Sweep: Conduct a hyperparameter sweep to find the optimal balance between evasion and quality.
+
+Export Data: Automatically save results_*.csv, lambda_sweep.csv, and evaluation_summary.csv to the working directory.
+
+Visualize Results: Produce ablation bar charts and trade-off plots.
+
+Tech Stack
+Models: roberta-base-openai-detector, gpt2
+
+Frameworks: transformers, torch, bert-score, textstat
+
+Dataset: HC3 (Human-ChatGPT Comparison Corpus)
