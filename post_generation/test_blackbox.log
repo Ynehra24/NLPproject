@@ -1,0 +1,50 @@
+Loading weights:   0%|          | 0/260 [00:00<?, ?it/s]Loading weights: 100%|██████████| 260/260 [00:00<00:00, 18241.60it/s]
+16:41:45 | INFO | main | Loading surrogate detector: Hello-SimpleAI/chatgpt-detector-roberta
+16:41:45 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+16:41:45 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Hello-SimpleAI/chatgpt-detector-roberta/d2b342c61775d5dd0221808a79983ed3b86ffd86/config.json "HTTP/1.1 200 OK"
+16:41:45 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/main/model.safetensors "HTTP/1.1 404 Not Found"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+16:41:45 | WARNING | huggingface_hub.utils._http | Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]Loading weights: 100%|██████████| 201/201 [00:00<00:00, 39273.97it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: Hello-SimpleAI/chatgpt-detector-roberta
+Key                             | Status     |  | 
+--------------------------------+------------+--+-
+roberta.embeddings.position_ids | UNEXPECTED |  | 
+
+[3mNotes:
+- UNEXPECTED[3m	:can be ignored when loading from different task/architecture; not ok if you expect identical arch.[0m
+16:41:46 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta "HTTP/1.1 200 OK"
+16:41:46 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+16:41:46 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Hello-SimpleAI/chatgpt-detector-roberta/d2b342c61775d5dd0221808a79983ed3b86ffd86/config.json "HTTP/1.1 200 OK"
+16:41:46 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/commits/main "HTTP/1.1 200 OK"
+16:41:46 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+16:41:46 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Hello-SimpleAI/chatgpt-detector-roberta/d2b342c61775d5dd0221808a79983ed3b86ffd86/tokenizer_config.json "HTTP/1.1 200 OK"
+16:41:46 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/discussions?p=0 "HTTP/1.1 200 OK"
+16:41:46 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+16:41:46 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+16:41:47 | INFO | main | Loading Fast-DetectGPT detector
+16:41:47 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/commits/refs%2Fpr%2F2 "HTTP/1.1 200 OK"
+16:41:47 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2-medium/resolve/main/config.json "HTTP/1.1 200 OK"
+16:41:47 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/refs%2Fpr%2F2/model.safetensors.index.json "HTTP/1.1 404 Not Found"
+16:41:47 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/refs%2Fpr%2F2/model.safetensors "HTTP/1.1 302 Found"
+16:41:47 | INFO | httpx | HTTP Request: GET https://huggingface.co/gpt2-medium/resolve/main/config.json "HTTP/1.1 200 OK"
+16:41:47 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2-medium/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+16:41:48 | INFO | httpx | HTTP Request: GET https://huggingface.co/gpt2-medium/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+16:41:48 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/gpt2-medium/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+16:41:48 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/openai-community/gpt2-medium/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+16:41:48 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/gpt2-medium/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+16:41:49 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/openai-community/gpt2-medium/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+16:41:49 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2-medium/resolve/main/vocab.json "HTTP/1.1 200 OK"
+16:41:49 | INFO | httpx | HTTP Request: GET https://huggingface.co/gpt2-medium/resolve/main/vocab.json "HTTP/1.1 200 OK"
+16:41:50 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2-medium/resolve/main/merges.txt "HTTP/1.1 200 OK"
+16:41:50 | INFO | httpx | HTTP Request: GET https://huggingface.co/gpt2-medium/resolve/main/merges.txt "HTTP/1.1 200 OK"
+16:41:50 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2-medium/resolve/main/added_tokens.json "HTTP/1.1 404 Not Found"
+16:41:51 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2-medium/resolve/main/special_tokens_map.json "HTTP/1.1 404 Not Found"
+16:41:51 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2-medium/resolve/main/tokenizer.json "HTTP/1.1 200 OK"
+16:41:51 | INFO | httpx | HTTP Request: GET https://huggingface.co/gpt2-medium/resolve/main/tokenizer.json "HTTP/1.1 200 OK"
+16:41:52 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2-medium/resolve/main/chat_template.jinja "HTTP/1.1 404 Not Found"
+16:41:53 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2-medium/resolve/main/config.json "HTTP/1.1 200 OK"
+16:41:53 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2-medium/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+16:41:53 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/openai-community/gpt2-medium/xet-read-token/6dcaa7a952f72f9298047fd5137cd6e4f05f41da "HTTP/1.1 200 OK"
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/multiprocessing/resource_tracker.py:301: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown: {'/loky-26831-ztiwz2b8'}
+  warnings.warn(

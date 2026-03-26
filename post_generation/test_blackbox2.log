@@ -1,0 +1,136 @@
+Loading weights:   0%|          | 0/260 [00:00<?, ?it/s]Loading weights: 100%|██████████| 260/260 [00:00<00:00, 18568.66it/s]
+16:48:08 | INFO | main | Loading surrogate detector: Hello-SimpleAI/chatgpt-detector-roberta
+16:48:08 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+16:48:08 | WARNING | huggingface_hub.utils._http | Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+16:48:08 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Hello-SimpleAI/chatgpt-detector-roberta/d2b342c61775d5dd0221808a79983ed3b86ffd86/config.json "HTTP/1.1 200 OK"
+16:48:08 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/main/model.safetensors "HTTP/1.1 404 Not Found"
+Loading weights:   0%|          | 0/201 [00:00<?, ?it/s]Loading weights: 100%|██████████| 201/201 [00:00<00:00, 35052.81it/s]
+[1mRobertaForSequenceClassification LOAD REPORT[0m from: Hello-SimpleAI/chatgpt-detector-roberta
+Key                             | Status     |  | 
+--------------------------------+------------+--+-
+roberta.embeddings.position_ids | UNEXPECTED |  | 
+
+[3mNotes:
+- UNEXPECTED[3m	:can be ignored when loading from different task/architecture; not ok if you expect identical arch.[0m
+16:48:08 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta "HTTP/1.1 200 OK"
+16:48:09 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+16:48:09 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Hello-SimpleAI/chatgpt-detector-roberta/d2b342c61775d5dd0221808a79983ed3b86ffd86/config.json "HTTP/1.1 200 OK"
+16:48:09 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/commits/main "HTTP/1.1 200 OK"
+16:48:09 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+16:48:09 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Hello-SimpleAI/chatgpt-detector-roberta/d2b342c61775d5dd0221808a79983ed3b86ffd86/tokenizer_config.json "HTTP/1.1 200 OK"
+16:48:09 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/discussions?p=0 "HTTP/1.1 200 OK"
+16:48:09 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+16:48:09 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/commits/refs%2Fpr%2F2 "HTTP/1.1 200 OK"
+16:48:09 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/Hello-SimpleAI/chatgpt-detector-roberta/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+16:48:09 | INFO | main | Loading Fast-DetectGPT detector (using gpt2 to avoid slow downloads)
+16:48:10 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/refs%2Fpr%2F2/model.safetensors.index.json "HTTP/1.1 404 Not Found"
+16:48:10 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2/resolve/main/config.json "HTTP/1.1 200 OK"
+16:48:10 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/Hello-SimpleAI/chatgpt-detector-roberta/resolve/refs%2Fpr%2F2/model.safetensors "HTTP/1.1 302 Found"
+16:48:10 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+16:48:10 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/gpt2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+16:48:11 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/openai-community/gpt2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+16:48:11 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/gpt2/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+16:48:11 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/openai-community/gpt2/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+16:48:12 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 8316.46it/s]
+16:48:12 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2/resolve/main/generation_config.json "HTTP/1.1 200 OK"
+16:48:12 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2/resolve/main/config.json "HTTP/1.1 200 OK"
+16:48:13 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+16:48:13 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/gpt2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+16:48:13 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/openai-community/gpt2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+16:48:13 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/gpt2/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+16:48:14 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/openai-community/gpt2/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+16:48:14 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 25328.75it/s]
+16:48:14 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2/resolve/main/generation_config.json "HTTP/1.1 200 OK"
+16:48:15 | INFO | main | Loading Binoculars detector (using gpt2 to avoid slow downloads)
+16:48:15 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2/resolve/main/config.json "HTTP/1.1 200 OK"
+16:48:15 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+16:48:15 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/gpt2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+16:48:16 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/openai-community/gpt2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+16:48:16 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/gpt2/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+16:48:16 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/openai-community/gpt2/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+16:48:17 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/148 [00:00<?, ?it/s]Loading weights: 100%|██████████| 148/148 [00:00<00:00, 24041.71it/s]
+16:48:17 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/gpt2/resolve/main/generation_config.json "HTTP/1.1 200 OK"
+16:48:17 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/distilgpt2/resolve/main/config.json "HTTP/1.1 200 OK"
+16:48:18 | INFO | httpx | HTTP Request: GET https://huggingface.co/distilgpt2/resolve/main/config.json "HTTP/1.1 200 OK"
+16:48:18 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/distilgpt2/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+16:48:18 | INFO | httpx | HTTP Request: GET https://huggingface.co/distilgpt2/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+16:48:18 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/distilgpt2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+16:48:19 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/distilbert/distilgpt2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+16:48:19 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/distilgpt2/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+16:48:19 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/distilbert/distilgpt2/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+16:48:20 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/distilgpt2/resolve/main/vocab.json "HTTP/1.1 200 OK"
+16:48:20 | INFO | httpx | HTTP Request: GET https://huggingface.co/distilgpt2/resolve/main/vocab.json "HTTP/1.1 200 OK"
+16:48:21 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/distilgpt2/resolve/main/merges.txt "HTTP/1.1 200 OK"
+16:48:21 | INFO | httpx | HTTP Request: GET https://huggingface.co/distilgpt2/resolve/main/merges.txt "HTTP/1.1 200 OK"
+16:48:21 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/distilgpt2/resolve/main/added_tokens.json "HTTP/1.1 404 Not Found"
+16:48:22 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/distilgpt2/resolve/main/special_tokens_map.json "HTTP/1.1 404 Not Found"
+16:48:22 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/distilgpt2/resolve/main/tokenizer.json "HTTP/1.1 200 OK"
+16:48:22 | INFO | httpx | HTTP Request: GET https://huggingface.co/distilgpt2/resolve/main/tokenizer.json "HTTP/1.1 200 OK"
+16:48:23 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/distilgpt2/resolve/main/chat_template.jinja "HTTP/1.1 404 Not Found"
+16:48:24 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/distilgpt2/resolve/main/config.json "HTTP/1.1 200 OK"
+16:48:24 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/distilgpt2/resolve/main/model.safetensors "HTTP/1.1 302 Found"
+16:48:24 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/distilbert/distilgpt2/xet-read-token/2290a62682d06624634c1f46a6ad5be0f47f38aa "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/76 [00:00<?, ?it/s]Loading weights: 100%|██████████| 76/76 [00:00<00:00, 18751.01it/s]
+16:50:15 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/distilgpt2/resolve/main/generation_config.json "HTTP/1.1 200 OK"
+16:50:15 | INFO | httpx | HTTP Request: GET https://huggingface.co/distilgpt2/resolve/main/generation_config.json "HTTP/1.1 200 OK"
+16:50:15 | INFO | data_utils | HumanCorpusStats loaded from outputs/checkpoints/human_stats.json
+16:50:15 | INFO | main | Evaluating on 100 samples
+16:50:15 | INFO | main | Generating paraphrases…
+16:51:53 | INFO | evaluator | Computing ASR on surrogate detector…
+16:51:55 | INFO | evaluator | Computing CPTR on: fast_detectgpt
+Scoring Fast-DetectGPT:   0%|          | 0/100 [00:00<?, ?it/s]Scoring Fast-DetectGPT:   1%|          | 1/100 [00:00<01:11,  1.38it/s]Scoring Fast-DetectGPT:   3%|▎         | 3/100 [00:00<00:26,  3.65it/s]Scoring Fast-DetectGPT:   4%|▍         | 4/100 [00:01<00:22,  4.18it/s]Scoring Fast-DetectGPT:   5%|▌         | 5/100 [00:01<00:20,  4.56it/s]Scoring Fast-DetectGPT:   6%|▌         | 6/100 [00:01<00:25,  3.75it/s]Scoring Fast-DetectGPT:   7%|▋         | 7/100 [00:02<00:26,  3.47it/s]Scoring Fast-DetectGPT:   8%|▊         | 8/100 [00:02<00:37,  2.46it/s]Scoring Fast-DetectGPT:  10%|█         | 10/100 [00:03<00:32,  2.75it/s]Scoring Fast-DetectGPT:  11%|█         | 11/100 [00:03<00:29,  2.99it/s]Scoring Fast-DetectGPT:  12%|█▏        | 12/100 [00:03<00:29,  2.97it/s]Scoring Fast-DetectGPT:  16%|█▌        | 16/100 [00:04<00:14,  5.62it/s]Scoring Fast-DetectGPT:  17%|█▋        | 17/100 [00:04<00:14,  5.66it/s]Scoring Fast-DetectGPT:  18%|█▊        | 18/100 [00:04<00:13,  6.20it/s]Scoring Fast-DetectGPT:  20%|██        | 20/100 [00:05<00:17,  4.47it/s]Scoring Fast-DetectGPT:  22%|██▏       | 22/100 [00:05<00:13,  5.90it/s]Scoring Fast-DetectGPT:  23%|██▎       | 23/100 [00:05<00:12,  6.04it/s]Scoring Fast-DetectGPT:  25%|██▌       | 25/100 [00:05<00:15,  4.88it/s]Scoring Fast-DetectGPT:  27%|██▋       | 27/100 [00:06<00:16,  4.37it/s]Scoring Fast-DetectGPT:  30%|███       | 30/100 [00:06<00:10,  6.75it/s]Scoring Fast-DetectGPT:  34%|███▍      | 34/100 [00:06<00:06, 10.59it/s]Scoring Fast-DetectGPT:  38%|███▊      | 38/100 [00:07<00:08,  7.61it/s]Scoring Fast-DetectGPT:  43%|████▎     | 43/100 [00:07<00:05, 10.63it/s]Scoring Fast-DetectGPT:  49%|████▉     | 49/100 [00:08<00:04, 12.57it/s]Scoring Fast-DetectGPT:  51%|█████     | 51/100 [00:08<00:04, 10.54it/s]Scoring Fast-DetectGPT:  54%|█████▍    | 54/100 [00:08<00:03, 12.58it/s]Scoring Fast-DetectGPT:  60%|██████    | 60/100 [00:08<00:02, 18.48it/s]Scoring Fast-DetectGPT:  63%|██████▎   | 63/100 [00:08<00:01, 19.87it/s]Scoring Fast-DetectGPT:  69%|██████▉   | 69/100 [00:08<00:01, 24.03it/s]Scoring Fast-DetectGPT:  75%|███████▌  | 75/100 [00:09<00:01, 18.59it/s]Scoring Fast-DetectGPT:  79%|███████▉  | 79/100 [00:09<00:01, 16.61it/s]Scoring Fast-DetectGPT:  86%|████████▌ | 86/100 [00:10<00:00, 16.75it/s]Scoring Fast-DetectGPT:  91%|█████████ | 91/100 [00:10<00:00, 20.62it/s]Scoring Fast-DetectGPT:  94%|█████████▍| 94/100 [00:10<00:00, 16.24it/s]Scoring Fast-DetectGPT:  99%|█████████▉| 99/100 [00:10<00:00, 20.46it/s]Scoring Fast-DetectGPT: 100%|██████████| 100/100 [00:10<00:00,  9.35it/s]
+16:52:06 | INFO | evaluator | Computing Baseline TNR on: fast_detectgpt
+Scoring Fast-DetectGPT:   0%|          | 0/100 [00:00<?, ?it/s]Scoring Fast-DetectGPT:   1%|          | 1/100 [00:00<00:14,  6.94it/s]Scoring Fast-DetectGPT:   3%|▎         | 3/100 [00:00<00:11,  8.77it/s]Scoring Fast-DetectGPT:   5%|▌         | 5/100 [00:00<00:09, 10.53it/s]Scoring Fast-DetectGPT:   7%|▋         | 7/100 [00:00<00:07, 12.00it/s]Scoring Fast-DetectGPT:   9%|▉         | 9/100 [00:00<00:07, 12.51it/s]Scoring Fast-DetectGPT:  11%|█         | 11/100 [00:01<00:08, 10.76it/s]Scoring Fast-DetectGPT:  13%|█▎        | 13/100 [00:01<00:09,  9.64it/s]Scoring Fast-DetectGPT:  15%|█▌        | 15/100 [00:01<00:07, 11.33it/s]Scoring Fast-DetectGPT:  17%|█▋        | 17/100 [00:01<00:06, 12.92it/s]Scoring Fast-DetectGPT:  19%|█▉        | 19/100 [00:01<00:05, 13.83it/s]Scoring Fast-DetectGPT:  21%|██        | 21/100 [00:01<00:05, 14.03it/s]Scoring Fast-DetectGPT:  23%|██▎       | 23/100 [00:01<00:05, 13.65it/s]Scoring Fast-DetectGPT:  25%|██▌       | 25/100 [00:02<00:05, 13.95it/s]Scoring Fast-DetectGPT:  27%|██▋       | 27/100 [00:02<00:07,  9.84it/s]Scoring Fast-DetectGPT:  30%|███       | 30/100 [00:02<00:07,  9.45it/s]Scoring Fast-DetectGPT:  32%|███▏      | 32/100 [00:02<00:06, 10.75it/s]Scoring Fast-DetectGPT:  34%|███▍      | 34/100 [00:03<00:06, 10.08it/s]Scoring Fast-DetectGPT:  36%|███▌      | 36/100 [00:03<00:05, 11.00it/s]Scoring Fast-DetectGPT:  39%|███▉      | 39/100 [00:03<00:04, 13.04it/s]Scoring Fast-DetectGPT:  41%|████      | 41/100 [00:03<00:04, 12.89it/s]Scoring Fast-DetectGPT:  43%|████▎     | 43/100 [00:03<00:05, 11.15it/s]Scoring Fast-DetectGPT:  47%|████▋     | 47/100 [00:03<00:03, 15.48it/s]Scoring Fast-DetectGPT:  49%|████▉     | 49/100 [00:04<00:03, 14.97it/s]Scoring Fast-DetectGPT:  51%|█████     | 51/100 [00:04<00:03, 15.03it/s]Scoring Fast-DetectGPT:  53%|█████▎    | 53/100 [00:04<00:03, 12.74it/s]Scoring Fast-DetectGPT:  55%|█████▌    | 55/100 [00:04<00:03, 13.21it/s]Scoring Fast-DetectGPT:  57%|█████▋    | 57/100 [00:04<00:03, 13.75it/s]Scoring Fast-DetectGPT:  59%|█████▉    | 59/100 [00:04<00:02, 14.65it/s]Scoring Fast-DetectGPT:  62%|██████▏   | 62/100 [00:04<00:02, 16.16it/s]Scoring Fast-DetectGPT:  65%|██████▌   | 65/100 [00:05<00:01, 18.38it/s]Scoring Fast-DetectGPT:  68%|██████▊   | 68/100 [00:05<00:01, 20.10it/s]Scoring Fast-DetectGPT:  71%|███████   | 71/100 [00:05<00:01, 18.95it/s]Scoring Fast-DetectGPT:  73%|███████▎  | 73/100 [00:05<00:01, 17.97it/s]Scoring Fast-DetectGPT:  75%|███████▌  | 75/100 [00:05<00:01, 18.08it/s]Scoring Fast-DetectGPT:  77%|███████▋  | 77/100 [00:05<00:01, 18.35it/s]Scoring Fast-DetectGPT:  79%|███████▉  | 79/100 [00:05<00:01, 18.64it/s]Scoring Fast-DetectGPT:  81%|████████  | 81/100 [00:05<00:01, 18.94it/s]Scoring Fast-DetectGPT:  84%|████████▍ | 84/100 [00:06<00:00, 18.49it/s]Scoring Fast-DetectGPT:  87%|████████▋ | 87/100 [00:06<00:00, 19.42it/s]Scoring Fast-DetectGPT:  89%|████████▉ | 89/100 [00:06<00:00, 17.94it/s]Scoring Fast-DetectGPT:  93%|█████████▎| 93/100 [00:06<00:00, 23.09it/s]Scoring Fast-DetectGPT:  96%|█████████▌| 96/100 [00:06<00:00, 21.72it/s]Scoring Fast-DetectGPT:  99%|█████████▉| 99/100 [00:06<00:00, 19.86it/s]Scoring Fast-DetectGPT: 100%|██████████| 100/100 [00:06<00:00, 14.67it/s]
+16:52:12 | INFO | evaluator | Computing CPTR on: binoculars
+Scoring Binoculars:   0%|          | 0/100 [00:00<?, ?it/s]Scoring Binoculars:   3%|▎         | 3/100 [00:00<00:06, 15.05it/s]Scoring Binoculars:   5%|▌         | 5/100 [00:00<00:06, 14.29it/s]Scoring Binoculars:   7%|▋         | 7/100 [00:00<00:06, 13.94it/s]Scoring Binoculars:   9%|▉         | 9/100 [00:00<00:06, 13.99it/s]Scoring Binoculars:  11%|█         | 11/100 [00:00<00:06, 13.92it/s]Scoring Binoculars:  15%|█▌        | 15/100 [00:00<00:04, 17.95it/s]Scoring Binoculars:  17%|█▋        | 17/100 [00:01<00:05, 16.15it/s]Scoring Binoculars:  20%|██        | 20/100 [00:01<00:04, 17.18it/s]Scoring Binoculars:  23%|██▎       | 23/100 [00:01<00:04, 17.78it/s]Scoring Binoculars:  25%|██▌       | 25/100 [00:01<00:04, 16.36it/s]Scoring Binoculars:  27%|██▋       | 27/100 [00:01<00:04, 15.60it/s]Scoring Binoculars:  31%|███       | 31/100 [00:01<00:03, 20.59it/s]Scoring Binoculars:  36%|███▌      | 36/100 [00:01<00:02, 26.92it/s]Scoring Binoculars:  39%|███▉      | 39/100 [00:02<00:02, 27.47it/s]Scoring Binoculars:  42%|████▏     | 42/100 [00:02<00:02, 25.05it/s]Scoring Binoculars:  47%|████▋     | 47/100 [00:02<00:01, 26.62it/s]Scoring Binoculars:  50%|█████     | 50/100 [00:02<00:02, 24.48it/s]Scoring Binoculars:  53%|█████▎    | 53/100 [00:02<00:02, 22.67it/s]Scoring Binoculars:  57%|█████▋    | 57/100 [00:02<00:01, 25.99it/s]Scoring Binoculars:  62%|██████▏   | 62/100 [00:02<00:01, 26.10it/s]Scoring Binoculars:  67%|██████▋   | 67/100 [00:03<00:01, 26.75it/s]Scoring Binoculars:  70%|███████   | 70/100 [00:03<00:01, 23.42it/s]Scoring Binoculars:  75%|███████▌  | 75/100 [00:03<00:00, 28.19it/s]Scoring Binoculars:  79%|███████▉  | 79/100 [00:03<00:00, 25.31it/s]Scoring Binoculars:  86%|████████▌ | 86/100 [00:03<00:00, 31.69it/s]Scoring Binoculars:  92%|█████████▏| 92/100 [00:03<00:00, 33.04it/s]Scoring Binoculars:  96%|█████████▌| 96/100 [00:04<00:00, 34.11it/s]Scoring Binoculars: 100%|██████████| 100/100 [00:04<00:00, 30.84it/s]Scoring Binoculars: 100%|██████████| 100/100 [00:04<00:00, 23.75it/s]
+16:52:17 | INFO | evaluator | Computing Baseline TNR on: binoculars
+Scoring Binoculars:   0%|          | 0/100 [00:00<?, ?it/s]Scoring Binoculars:   2%|▏         | 2/100 [00:00<00:08, 12.00it/s]Scoring Binoculars:   4%|▍         | 4/100 [00:00<00:08, 11.98it/s]Scoring Binoculars:   6%|▌         | 6/100 [00:00<00:07, 11.96it/s]Scoring Binoculars:   8%|▊         | 8/100 [00:00<00:07, 12.40it/s]Scoring Binoculars:  10%|█         | 10/100 [00:00<00:07, 12.48it/s]Scoring Binoculars:  12%|█▏        | 12/100 [00:00<00:07, 12.32it/s]Scoring Binoculars:  14%|█▍        | 14/100 [00:01<00:07, 11.74it/s]Scoring Binoculars:  16%|█▌        | 16/100 [00:01<00:06, 12.76it/s]Scoring Binoculars:  18%|█▊        | 18/100 [00:01<00:06, 12.45it/s]Scoring Binoculars:  20%|██        | 20/100 [00:01<00:06, 12.74it/s]Scoring Binoculars:  22%|██▏       | 22/100 [00:01<00:06, 12.50it/s]Scoring Binoculars:  24%|██▍       | 24/100 [00:01<00:06, 12.59it/s]Scoring Binoculars:  26%|██▌       | 26/100 [00:02<00:06, 12.15it/s]Scoring Binoculars:  28%|██▊       | 28/100 [00:02<00:06, 11.86it/s]Scoring Binoculars:  30%|███       | 30/100 [00:02<00:05, 12.05it/s]Scoring Binoculars:  32%|███▏      | 32/100 [00:02<00:05, 12.31it/s]Scoring Binoculars:  34%|███▍      | 34/100 [00:02<00:05, 11.97it/s]Scoring Binoculars:  36%|███▌      | 36/100 [00:02<00:05, 12.03it/s]Scoring Binoculars:  38%|███▊      | 38/100 [00:03<00:04, 13.06it/s]Scoring Binoculars:  40%|████      | 40/100 [00:03<00:04, 12.72it/s]Scoring Binoculars:  42%|████▏     | 42/100 [00:03<00:04, 12.61it/s]Scoring Binoculars:  45%|████▌     | 45/100 [00:03<00:03, 14.46it/s]Scoring Binoculars:  48%|████▊     | 48/100 [00:03<00:03, 15.49it/s]Scoring Binoculars:  50%|█████     | 50/100 [00:03<00:03, 14.67it/s]Scoring Binoculars:  52%|█████▏    | 52/100 [00:04<00:03, 13.96it/s]Scoring Binoculars:  54%|█████▍    | 54/100 [00:04<00:03, 13.48it/s]Scoring Binoculars:  56%|█████▌    | 56/100 [00:04<00:03, 13.22it/s]Scoring Binoculars:  58%|█████▊    | 58/100 [00:04<00:03, 13.19it/s]Scoring Binoculars:  60%|██████    | 60/100 [00:04<00:03, 13.07it/s]Scoring Binoculars:  63%|██████▎   | 63/100 [00:04<00:02, 16.27it/s]Scoring Binoculars:  65%|██████▌   | 65/100 [00:04<00:02, 15.33it/s]Scoring Binoculars:  68%|██████▊   | 68/100 [00:05<00:01, 16.17it/s]Scoring Binoculars:  70%|███████   | 70/100 [00:05<00:02, 14.64it/s]Scoring Binoculars:  72%|███████▏  | 72/100 [00:05<00:02, 13.44it/s]Scoring Binoculars:  75%|███████▌  | 75/100 [00:05<00:01, 15.40it/s]Scoring Binoculars:  77%|███████▋  | 77/100 [00:05<00:01, 16.06it/s]Scoring Binoculars:  79%|███████▉  | 79/100 [00:05<00:01, 16.92it/s]Scoring Binoculars:  81%|████████  | 81/100 [00:05<00:01, 17.65it/s]Scoring Binoculars:  84%|████████▍ | 84/100 [00:06<00:00, 18.21it/s]Scoring Binoculars:  86%|████████▌ | 86/100 [00:06<00:00, 18.52it/s]Scoring Binoculars:  88%|████████▊ | 88/100 [00:06<00:00, 16.28it/s]Scoring Binoculars:  91%|█████████ | 91/100 [00:06<00:00, 16.79it/s]Scoring Binoculars:  94%|█████████▍| 94/100 [00:06<00:00, 19.31it/s]Scoring Binoculars:  97%|█████████▋| 97/100 [00:06<00:00, 16.88it/s]Scoring Binoculars:  99%|█████████▉| 99/100 [00:06<00:00, 16.69it/s]Scoring Binoculars: 100%|██████████| 100/100 [00:06<00:00, 14.32it/s]
+16:52:24 | INFO | evaluator | Measuring baseline detection of unmodified AI text…
+16:52:26 | INFO | evaluator | Computing BLEU / ROUGE-L…
+16:52:26 | INFO | absl | Using default tokenizer.
+16:52:26 | INFO | evaluator | Computing BERTScore…
+16:52:27 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/roberta-large/resolve/main/config.json "HTTP/1.1 200 OK"
+16:52:27 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/roberta-large/resolve/main/tokenizer_config.json "HTTP/1.1 200 OK"
+16:52:27 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/roberta-large/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 307 Temporary Redirect"
+16:52:27 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-large/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+16:52:28 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/roberta-large/tree/main?recursive=true&expand=false "HTTP/1.1 307 Temporary Redirect"
+16:52:28 | INFO | httpx | HTTP Request: GET https://huggingface.co/api/models/FacebookAI/roberta-large/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+16:52:28 | INFO | httpx | HTTP Request: HEAD https://huggingface.co/roberta-large/resolve/main/config.json "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/389 [00:00<?, ?it/s]Loading weights: 100%|██████████| 389/389 [00:00<00:00, 9241.64it/s]
+[1mRobertaModel LOAD REPORT[0m from: roberta-large
+Key                             | Status     | 
+--------------------------------+------------+-
+lm_head.layer_norm.weight       | UNEXPECTED | 
+lm_head.layer_norm.bias         | UNEXPECTED | 
+roberta.embeddings.position_ids | UNEXPECTED | 
+lm_head.dense.bias              | UNEXPECTED | 
+lm_head.dense.weight            | UNEXPECTED | 
+lm_head.bias                    | UNEXPECTED | 
+pooler.dense.weight             | MISSING    | 
+pooler.dense.bias               | MISSING    | 
+
+[3mNotes:
+- UNEXPECTED[3m	:can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+- MISSING[3m	:those params were newly initialized because missing from the checkpoint. Consider training on your downstream task.[0m
+16:52:39 | INFO | evaluator | Computing stylometric features…
+
+============================================================
+EVALUATION SUMMARY
+============================================================
+  ASR (surrogate, white-box)                1.0000
+  Baseline AI detection rate                0.9500
+  BLEU                                      0.0008
+  ROUGE-Lsum                                0.0161
+  BERTScore F1                              0.7675
+  Burstiness coefficient                    1.8221
+  KL burstiness (↓ = more human)            1.8612
+  Lexical entropy                           5.1871
+  CPTR [fast_detectgpt              ]  1.0000
+  CPTR [binoculars                  ]  0.5000
+============================================================
+
+16:52:39 | INFO | evaluator | Evaluation results saved to outputs/eval_results.json

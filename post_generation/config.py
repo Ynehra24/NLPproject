@@ -128,7 +128,7 @@ class EvalConfig:
     bertscore_model: str = "roberta-large"
 
     # Number of evaluation samples.
-    eval_sample_size: int = 500
+    eval_sample_size: int = 100
 
     # Path to save evaluation results JSON.
     results_path: str = "outputs/eval_results.json"

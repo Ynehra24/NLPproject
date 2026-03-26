@@ -314,16 +314,30 @@ class EvaderEvaluator:
             results["ASR_improvement"] = asr - baseline_asr
 
         # ---- 2. CPTR on black-box detectors ----
-        for idx, (bb_model, bb_tok) in enumerate(self.blackbox_models):
-            name = getattr(bb_model.config, "_name_or_path", f"blackbox_{idx}")
-            logger.info("Computing CPTR on: %s", name)
-            _, bb_preds = batch_predict(
-                bb_model, bb_tok, paraphrased_texts,
-                human_label_idx=self.human_label_idx,
-                device=self.device,
-            )
-            cptr = sum(1 for p in bb_preds if p == self.human_label_idx) / len(bb_preds)
-            results[f"CPTR_{name}"] = cptr
+        for blackbox in self.blackbox_models:
+            if hasattr(blackbox, 'detector_name'):
+                # Handle detector_evaluation abstract detectors
+                name = blackbox.detector_name
+                logger.info("Computing CPTR on: %s", name)
+                ai_scores, _ = blackbox.score_texts(paraphrased_texts)
+                cptr = sum(1 for s in ai_scores if s <= 0.5) / len(ai_scores)
+                results[f"CPTR_{name}"] = cptr
+                
+                logger.info("Computing Baseline TNR on: %s", name)
+                orig_ai_scores, _ = blackbox.score_texts(original_texts)
+                baseline_tnr = sum(1 for s in orig_ai_scores if s > 0.5) / len(orig_ai_scores)
+                results[f"Baseline_TNR_{name}"] = baseline_tnr
+            else:
+                bb_model, bb_tok = blackbox
+                name = getattr(bb_model.config, "_name_or_path", f"blackbox_{idx}")
+                logger.info("Computing CPTR on: %s", name)
+                _, bb_preds = batch_predict(
+                    bb_model, bb_tok, paraphrased_texts,
+                    human_label_idx=self.human_label_idx,
+                    device=self.device,
+                )
+                cptr = sum(1 for p in bb_preds if p == self.human_label_idx) / len(bb_preds)
+                results[f"CPTR_{name}"] = cptr
 
         # Also measure baseline detection rate of original AI text
         logger.info("Measuring baseline detection of unmodified AI text…")

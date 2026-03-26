@@ -148,13 +148,28 @@ def run_evaluate(config: Config, checkpoint_path: str, results_path: str) -> Non
     # ---- Load surrogate detector ----
     surrogate_model, surrogate_tok = load_surrogate_detector(config)
 
-    # ---- Load black-box detectors (optional, fill in your own paths) ----
-    blackbox_pairs = []
+    # ---- Load black-box detectors ----
+    import sys
+    sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'detector_evaluation')))
+    from detectors.binoculars.score import BinocularsDetector
+    from detectors.fast_detectgpt.score import FastDetectGPTDetector
+
+    blackbox_detectors = []
+    
+    logger.info("Loading Fast-DetectGPT detector (using gpt2 to avoid slow downloads)")
+    fast_detect_gpt = FastDetectGPTDetector(scoring_model="gpt2", reference_model="gpt2", device=config.device)
+    blackbox_detectors.append(fast_detect_gpt)
+
+    logger.info("Loading Binoculars detector (using gpt2 to avoid slow downloads)")
+    binoculars = BinocularsDetector(observer_model="gpt2", performer_model="distilgpt2", device=config.device)
+    blackbox_detectors.append(binoculars)
+    
+    # Optional standard models from config
     for bb_path in config.eval.blackbox_detector_paths:
         logger.info("Loading black-box detector: %s", bb_path)
         bb_model = AutoModelForSequenceClassification.from_pretrained(bb_path)
         bb_tok = AutoTokenizer.from_pretrained(bb_path)
-        blackbox_pairs.append((bb_model, bb_tok))
+        blackbox_detectors.append((bb_model, bb_tok))
 
     # ---- Load human stats ----
     cache_path = os.path.join(config.training.output_dir, "human_stats.json")
@@ -198,7 +213,7 @@ def run_evaluate(config: Config, checkpoint_path: str, results_path: str) -> Non
     evaluator = EvaderEvaluator(
         surrogate_model=surrogate_model,
         surrogate_tok=surrogate_tok,
-        blackbox_models=blackbox_pairs,
+        blackbox_models=blackbox_detectors,
         human_stats=human_stats,
         human_label_idx=config.model.human_label_idx,
         device=config.device,
