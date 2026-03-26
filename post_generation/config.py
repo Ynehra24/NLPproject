@@ -119,7 +119,7 @@ class EvalConfig:
     # Paths to black-box detectors used ONLY at eval time (never during training).
     # Fill these in after you have trained your own detector checkpoints.
     # Format: list of local checkpoint directories OR HuggingFace model IDs.
-    blackbox_detector_paths: List[str] = field(default_factory=list)
+    blackbox_detector_paths: List[str] = field(default_factory=lambda: ["roberta-base-openai-detector"])
 
     # Whether to run GPT-4 annotation for semantic quality (requires API key).
     run_gpt_annotation: bool = False
