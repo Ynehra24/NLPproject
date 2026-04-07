@@ -314,7 +314,7 @@ class EvaderEvaluator:
             results["ASR_improvement"] = asr - baseline_asr
 
         # ---- 2. CPTR on black-box detectors ----
-        for blackbox in self.blackbox_models:
+        for idx, blackbox in enumerate(self.blackbox_models):
             if hasattr(blackbox, 'detector_name'):
                 # Handle detector_evaluation abstract detectors
                 name = blackbox.detector_name

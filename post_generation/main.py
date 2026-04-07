@@ -104,8 +104,8 @@ def run_train(config: Config) -> None:
     # ---- Human corpus statistics ----
     cache_path = os.path.join(config.training.output_dir, "human_stats.json")
     # We use the EVADER's tokenizer to measure sentence lengths
-    from transformers import BartTokenizer
-    evader_tok = BartTokenizer.from_pretrained(config.model.evader_model_name)
+    from transformers import AutoTokenizer as EvaderTokenizer
+    evader_tok = EvaderTokenizer.from_pretrained(config.model.evader_model_name)
 
     human_stats = build_or_load_human_stats(
         human_corpus_path=config.training.human_corpus_path,
@@ -138,10 +138,10 @@ def run_evaluate(config: Config, checkpoint_path: str, results_path: str) -> Non
 
     # ---- Load evader ----
     from evader import StyleAwareEvader
-    from transformers import BartTokenizer, BartForConditionalGeneration
+    from transformers import AutoTokenizer, BartForConditionalGeneration
 
     evader_backbone = BartForConditionalGeneration.from_pretrained(checkpoint_path)
-    evader_tok = BartTokenizer.from_pretrained(checkpoint_path)
+    evader_tok = AutoTokenizer.from_pretrained(checkpoint_path)
     device = torch.device(config.device)
     evader_backbone.to(device).eval()
 
@@ -228,11 +228,11 @@ def run_evaluate(config: Config, checkpoint_path: str, results_path: str) -> Non
 # ---------------------------------------------------------------------------
 
 def run_paraphrase(config: Config, checkpoint_path: str) -> None:
-    from transformers import BartTokenizer, BartForConditionalGeneration
+    from transformers import BartForConditionalGeneration, AutoTokenizer
 
     device = torch.device(config.device)
     model = BartForConditionalGeneration.from_pretrained(checkpoint_path).to(device).eval()
-    tok = BartTokenizer.from_pretrained(checkpoint_path)
+    tok = AutoTokenizer.from_pretrained(checkpoint_path)
 
     print("\nStyleAwareEvader — Interactive Paraphrase Mode")
     print("Type your AI-generated text and press Enter twice to paraphrase.")

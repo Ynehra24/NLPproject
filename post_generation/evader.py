@@ -39,7 +39,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import (
     BartForConditionalGeneration,
-    BartTokenizer,
+    AutoTokenizer,
     PreTrainedModel,
     PreTrainedTokenizer,
     BertForSequenceClassification,
@@ -133,7 +133,7 @@ class StyleAwareEvader(nn.Module):
         self.evader = BartForConditionalGeneration.from_pretrained(
             config.model.evader_model_name
         )
-        self.tokenizer: PreTrainedTokenizer = BartTokenizer.from_pretrained(
+        self.tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
             config.model.evader_model_name
         )
 
@@ -198,6 +198,38 @@ class StyleAwareEvader(nn.Module):
     # Training forward pass
     # ------------------------------------------------------------------
 
+    def reconstruction_step(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+    ) -> Tuple[torch.Tensor, Dict]:
+        """
+        Phase 1: Standard seq2seq reconstruction training.
+        
+        The model learns to COPY the input text faithfully using standard
+        cross-entropy loss. This establishes a strong foundation before
+        adversarial fine-tuning.
+        
+        This is equivalent to training BART with labels=input_ids.
+        """
+        outputs = self.evader(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=input_ids,  # Standard seq2seq: output should match input
+        )
+        loss = outputs.loss  # Standard cross-entropy from HuggingFace
+        
+        info = {
+            "l_total": loss.item(),
+            "l_reconstruction": loss.item(),
+            "phase": "warmup",
+        }
+        return loss, info
+
+    # ------------------------------------------------------------------
+    # Training forward pass (Phase 2: Adversarial)
+    # ------------------------------------------------------------------
+
     def training_step(
         self,
         input_ids: torch.Tensor,
@@ -205,11 +237,10 @@ class StyleAwareEvader(nn.Module):
         input_embeddings: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, Dict]:
         """
-        One forward + loss computation step.
-
-        IMPORTANT FIX: Uses AUTOREGRESSIVE DECODING during training (not teacher-forcing).
-        This ensures the model learns to generate coherent text, matching the inference
-        behavior. This prevents degenerate solutions like repeated substrings.
+        Phase 2: Adversarial training step with joint loss.
+        
+        Uses teacher-forcing with proper shifted decoder inputs.
+        The joint loss includes adversarial, semantic, stylometric, and fluency terms.
 
         Args:
             input_ids:        (B, L) token IDs of the AI-generated source text.
@@ -221,41 +252,36 @@ class StyleAwareEvader(nn.Module):
             l_total:  Scalar loss (call .backward() on this).
             info:     Dict of sub-component values for logging.
         """
-        # Autoregressive forward: construct shifted input for decoder.
-        # Instead of teacher-forcing (feeding input as decoder input),
-        # we use the shifted input which mimics autoregressive generation.
-        # Position t of decoder input = position t-1 of encoder output.
-        B, L = input_ids.shape
-        bos_token_id = self.tokenizer.bos_token_id or self.tokenizer.pad_token_id
-        
-        # Construct decoder_input_ids by prepending BOS and removing last token
-        decoder_input_ids = torch.cat(
-            [
-                torch.full((B, 1), bos_token_id, dtype=input_ids.dtype, device=input_ids.device),
-                input_ids[:, :-1]
-            ],
-            dim=1
-        )  # (B, L)
-        
-        # Forward pass with autoregressive decoding
+        # Use BART's native teacher-forcing: labels trigger proper internal shifting
+        # This ensures decoder_input_ids are correctly constructed by HuggingFace
         outputs = self.evader(
             input_ids=input_ids,
             attention_mask=attention_mask,
-            decoder_input_ids=decoder_input_ids,
-            decoder_attention_mask=attention_mask,
+            labels=input_ids,  # HuggingFace handles decoder_input_ids shifting
         )
         logits = outputs.logits   # (B, L, vocab_size)
 
         # Convert to probabilities
         prob_matrix = F.softmax(logits, dim=-1)   # (B, L, vocab_size)
 
-        # Joint loss
-        l_total, info = self.joint_loss(
+        # Joint loss (adversarial + semantic + stylometric + fluency)
+        l_joint, info = self.joint_loss(
             prob_matrix=prob_matrix,
             input_ids=input_ids,
             attention_mask=attention_mask,
             input_embeddings=input_embeddings,
         )
+        
+        # Also add standard reconstruction loss to keep output coherent
+        # This anchors the model to produce actual readable text
+        l_recon = outputs.loss  # Standard cross-entropy from HuggingFace
+        
+        # Blend: mostly joint loss but with reconstruction anchor
+        l_total = 0.6 * l_joint + 0.4 * l_recon
+        
+        info["l_total"] = l_total.item()
+        info["l_reconstruction"] = l_recon.item()
+        info["phase"] = "adversarial"
         return l_total, info
 
     # ------------------------------------------------------------------
@@ -291,9 +317,10 @@ class StyleAwareEvader(nn.Module):
             num_beams=nb,
             max_length=ml,
             early_stopping=True,
-            no_repeat_ngram_size=3,
-            repetition_penalty=1.2,
-            length_penalty=2.0,
+            no_repeat_ngram_size=4,
+            repetition_penalty=1.3,
+            length_penalty=1.5,
+            min_length=int(input_ids.shape[1] * 0.3),  # Ensure minimum output length
         )
 
     @torch.no_grad()

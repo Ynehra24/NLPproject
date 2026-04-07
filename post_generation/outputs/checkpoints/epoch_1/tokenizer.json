@@ -2,13 +2,13 @@
   "version": "1.0",
   "truncation": {
     "direction": "Right",
-    "max_length": 512,
+    "max_length": 256,
     "strategy": "LongestFirst",
     "stride": 0
   },
   "padding": {
     "strategy": {
-      "Fixed": 512
+      "Fixed": 256
     },
     "direction": "Right",
     "pad_to_multiple_of": null,
@@ -23,7 +23,7 @@
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
-      "normalized": true,
+      "normalized": false,
       "special": true
     },
     {
@@ -32,7 +32,7 @@
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
-      "normalized": true,
+      "normalized": false,
       "special": true
     },
     {
@@ -41,7 +41,7 @@
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
-      "normalized": true,
+      "normalized": false,
       "special": true
     },
     {
@@ -50,7 +50,7 @@
       "single_word": false,
       "lstrip": false,
       "rstrip": false,
-      "normalized": true,
+      "normalized": false,
       "special": true
     },
     {
@@ -59,7 +59,7 @@
       "single_word": false,
       "lstrip": true,
       "rstrip": false,
-      "normalized": true,
+      "normalized": false,
       "special": true
     }
   ],
