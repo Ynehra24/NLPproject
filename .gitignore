@@ -22,6 +22,7 @@ explanation.md
 
 # Project-local docs/plans and outputs
 detector_evaluation/IMPLEMENTATION_PLAN.txt
+detector_evaluation/proposal.txt
 detector_evaluation/docs/
 detector_evaluation/results/
 detector_evaluation/data/
