@@ -1,0 +1,5 @@
+pair_id,original_text,humanized_text,attack_type,generator_model
+p001,"Artificial intelligence is transforming healthcare by improving diagnosis speed and treatment planning.","AI is changing healthcare by helping doctors diagnose faster and plan treatments more effectively.",paraphrase,gpt-3.5-turbo
+p002,"The quick brown fox jumps over the lazy dog near the river bank at sunrise.","A swift brown fox leaped over a sleepy dog beside the river early in the morning.",char,gpt-4
+p003,"Photosynthesis is a process used by plants to convert light energy into chemical energy.","Plants use photosynthesis to turn sunlight into stored chemical energy.",prompt,claude-3
+p004,"Machine learning models can overfit when they memorize training data instead of learning general patterns.","ML models may overfit if they memorize the training set rather than learning patterns that generalize.",gradient,llama-3
