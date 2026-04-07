@@ -186,10 +186,42 @@ def humanize(text: str, iterations: int = 5, beam_width: int = 5) -> str:
 
 if __name__ == "__main__":
     import argparse
+    import csv
+    import os
+    from pathlib import Path
+
     parser = argparse.ArgumentParser(description="Humanize AI text.")
-    parser.add_argument("text", type=str, help="The AI text to humanize.")
+    parser.add_argument("text", type=str, help="The AI text to humanize. Can be a path to a file with multiple lines or a newline-separated string.")
     args = parser.parse_args()
-    
-    output = humanize(args.text)
-    print("\n--- Humanized Output ---")
-    print(output)
+
+    input_arg = args.text
+
+    # Determine inputs: file path, newline-separated string, or single string
+    if os.path.exists(input_arg) and os.path.isfile(input_arg):
+        with open(input_arg, "r", encoding="utf-8") as fh:
+            lines = [line.rstrip("\n") for line in fh if line.strip()]
+    elif "\n" in input_arg:
+        lines = [ln for ln in input_arg.splitlines() if ln.strip()]
+    else:
+        lines = [input_arg]
+
+    if len(lines) > 1:
+        rows = []
+        for ln in lines:
+            humanized = humanize(ln)
+            rows.append((ln, humanized))
+
+        downloads_dir = Path.home() / "Downloads"
+        downloads_dir.mkdir(parents=True, exist_ok=True)
+        out_path = downloads_dir / "humanized_texts.csv"
+
+        with open(out_path, "w", encoding="utf-8", newline="") as csvf:
+            writer = csv.writer(csvf)
+            writer.writerow(["original", "humanized"])
+            writer.writerows(rows)
+
+        print(f"\nWrote {len(rows)} rows to {out_path}")
+    else:
+        output = humanize(lines[0])
+        print("\n--- Humanized Output ---")
+        print(output)
