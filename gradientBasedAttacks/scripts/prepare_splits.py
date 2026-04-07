@@ -5,7 +5,7 @@ All humanizer modules use the same splits for consistency.
 Usage: python scripts/prepare_splits.py
 Output: data/splits/train.csv, val.csv, test.csv
 
-Schema: id, text, source, attack_type, attack_owner, generator_model
+Schema: id, text, source, attack_type, generator_model
 """
 import json
 import random
@@ -29,7 +29,6 @@ with open(RAW) as f:
                     "text": ans.strip(),
                     "source": "ai",
                     "attack_type": "none",
-                    "attack_owner": "",
                     "generator_model": "gpt3.5-turbo"
                 })
         for ans in item.get("human_answers", []):
@@ -39,7 +38,6 @@ with open(RAW) as f:
                     "text": ans.strip(),
                     "source": "human",
                     "attack_type": "none",
-                    "attack_owner": "",
                     "generator_model": ""
                 })
 

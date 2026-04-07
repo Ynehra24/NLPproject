@@ -103,7 +103,6 @@ def main() -> None:
             "ppl": ppls,
             "avg_rank": ranks,
             "attack_type": df["attack_type"],
-            "attack_owner": df["attack_owner"],
             "source": df.get("source"),
         }
     )

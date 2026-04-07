@@ -79,13 +79,10 @@ def _load_score_files(scores_dir: Path) -> pd.DataFrame:
             slim["source"] = np.nan
         if "attack_type" not in slim.columns:
             slim["attack_type"] = "none"
-        if "attack_owner" not in slim.columns:
-            slim["attack_owner"] = "none"
 
         slim["id"] = slim["id"].astype(str)
         slim["detector_name"] = slim["detector_name"].astype(str)
         slim["attack_type"] = slim["attack_type"].fillna("none").astype(str)
-        slim["attack_owner"] = slim["attack_owner"].fillna("none").astype(str)
         frames.append(
             slim[
                 [
@@ -94,7 +91,6 @@ def _load_score_files(scores_dir: Path) -> pd.DataFrame:
                     "ai_score",
                     "source",
                     "attack_type",
-                    "attack_owner",
                 ]
             ]
         )
@@ -113,7 +109,7 @@ def _build_feature_table(long_df: pd.DataFrame, detector_names: List[str]) -> pd
     meta = (
         subset.sort_values(["id", "detector_name"])
         .groupby("id", as_index=False)
-        .first()[["id", "source", "attack_type", "attack_owner"]]
+        .first()[["id", "source", "attack_type"]]
     )
 
     wide = (
@@ -209,7 +205,6 @@ def _evaluate_ablation(feature_df: pd.DataFrame, detector_names: List[str], test
                 "id": feature_df.iloc[test_idx]["id"].to_numpy(),
                 "source": feature_df.iloc[test_idx]["source"].to_numpy(),
                 "attack_type": feature_df.iloc[test_idx]["attack_type"].to_numpy(),
-                "attack_owner": feature_df.iloc[test_idx]["attack_owner"].to_numpy(),
                 "variant": "mean_of_scores",
                 "score": mean_test,
             }
@@ -230,7 +225,6 @@ def _evaluate_ablation(feature_df: pd.DataFrame, detector_names: List[str], test
                 "id": feature_df.iloc[test_idx]["id"].to_numpy(),
                 "source": feature_df.iloc[test_idx]["source"].to_numpy(),
                 "attack_type": feature_df.iloc[test_idx]["attack_type"].to_numpy(),
-                "attack_owner": feature_df.iloc[test_idx]["attack_owner"].to_numpy(),
                 "variant": "logreg_base",
                 "score": base_test,
             }
@@ -258,7 +252,6 @@ def _evaluate_ablation(feature_df: pd.DataFrame, detector_names: List[str], test
                 "id": feature_df.iloc[test_idx]["id"].to_numpy(),
                 "source": feature_df.iloc[test_idx]["source"].to_numpy(),
                 "attack_type": feature_df.iloc[test_idx]["attack_type"].to_numpy(),
-                "attack_owner": feature_df.iloc[test_idx]["attack_owner"].to_numpy(),
                 "variant": "logreg_disagreement_augmented",
                 "score": full_test,
             }
@@ -286,7 +279,6 @@ def _evaluate_ablation(feature_df: pd.DataFrame, detector_names: List[str], test
                 "id": feature_df["id"].to_numpy(),
                 "source": feature_df["source"].to_numpy(),
                 "attack_type": feature_df["attack_type"].to_numpy(),
-                "attack_owner": feature_df["attack_owner"].to_numpy(),
                 "variant": "oracle_upper_bound",
                 "score": oracle_all,
             }

@@ -25,5 +25,5 @@ than either pure gradient (λ=1) or pure RL (λ=0).
 INTEGRATION
 -----------
 Output: results/evader_outputs/lambda_X/evaded.csv
-Schema: id, text, source=ai, attack_type=gradient, attack_owner=udaiveer
+Schema: id, text, source=ai, attack_type=gradient
 Pipeline: ../detector_evaluation/evaluation/run_all.py --input evaded.csv

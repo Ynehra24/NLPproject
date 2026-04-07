@@ -21,7 +21,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True, help="Where transferability CSVs are saved")
     parser.add_argument(
         "--group-by",
-        choices=["attack_type", "attack_owner", "attack_type_owner"],
+        choices=["attack_type"],
         default="attack_type",
         help="How to group attack conditions",
     )
@@ -36,13 +36,7 @@ def parse_args() -> argparse.Namespace:
 
 def _condition_label(df: pd.DataFrame, group_by: str) -> pd.Series:
     attack_type = df.get("attack_type", pd.Series(["none"] * len(df))).fillna("none").astype(str)
-    attack_owner = df.get("attack_owner", pd.Series(["none"] * len(df))).fillna("none").astype(str)
-
-    if group_by == "attack_type":
-        return attack_type
-    if group_by == "attack_owner":
-        return attack_owner
-    return attack_type + "::" + attack_owner
+    return attack_type
 
 
 def _evaluate_groups(score_df: pd.DataFrame, group_by: str) -> pd.DataFrame:
@@ -76,10 +70,6 @@ def _evaluate_groups(score_df: pd.DataFrame, group_by: str) -> pd.DataFrame:
 
 
 def _clean_condition_name(group_by: str) -> str:
-    if group_by == "attack_owner":
-        return "none"
-    if group_by == "attack_type_owner":
-        return "none::none"
     return "none"
 
 

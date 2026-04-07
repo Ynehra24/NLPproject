@@ -98,7 +98,6 @@ def main() -> None:
                     "text": text,
                     "source": "human",
                     "attack_type": "none",
-                    "attack_owner": "none",
                     "generator_model": source_domain,
                 }
             )
@@ -113,7 +112,6 @@ def main() -> None:
                     "text": text,
                     "source": "ai",
                     "attack_type": "none",
-                    "attack_owner": "none",
                     "generator_model": "chatgpt",
                 }
             )

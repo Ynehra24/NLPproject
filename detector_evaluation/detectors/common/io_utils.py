@@ -8,7 +8,7 @@ from typing import Iterable, List
 
 import pandas as pd
 
-from .config import DEFAULT_ATTACK_OWNER, DEFAULT_ATTACK_TYPE, OPTIONAL_COLUMNS, REQUIRED_COLUMNS
+from .config import DEFAULT_ATTACK_TYPE, OPTIONAL_COLUMNS, REQUIRED_COLUMNS
 
 
 def _read_jsonl(path: Path) -> pd.DataFrame:
@@ -49,10 +49,6 @@ def normalize_optional_columns(df: pd.DataFrame) -> pd.DataFrame:
     if "attack_type" not in out.columns:
         out["attack_type"] = DEFAULT_ATTACK_TYPE
     out["attack_type"] = out["attack_type"].fillna(DEFAULT_ATTACK_TYPE)
-
-    if "attack_owner" not in out.columns:
-        out["attack_owner"] = DEFAULT_ATTACK_OWNER
-    out["attack_owner"] = out["attack_owner"].fillna(DEFAULT_ATTACK_OWNER)
 
     for col in OPTIONAL_COLUMNS:
         if col not in out.columns:

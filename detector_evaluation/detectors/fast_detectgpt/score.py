@@ -117,7 +117,6 @@ def main() -> None:
             "threshold_used": float(threshold),
             "raw_discrepancy": raw_scores,
             "attack_type": df["attack_type"],
-            "attack_owner": df["attack_owner"],
             "source": df.get("source"),
         }
     )

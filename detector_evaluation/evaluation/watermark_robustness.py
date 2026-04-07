@@ -18,7 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", required=True, help="Output CSV for watermark robustness")
     parser.add_argument(
         "--group-by",
-        choices=["attack_type", "attack_owner", "attack_type_owner"],
+        choices=["attack_type"],
         default="attack_type",
         help="How to group attack conditions",
     )
@@ -46,18 +46,10 @@ def _resolve_scores_path(args: argparse.Namespace) -> Path:
 
 def _condition_label(df: pd.DataFrame, group_by: str) -> pd.Series:
     attack_type = df.get("attack_type", pd.Series(["none"] * len(df))).fillna("none").astype(str)
-    attack_owner = df.get("attack_owner", pd.Series(["none"] * len(df))).fillna("none").astype(str)
-
-    if group_by == "attack_type":
-        return attack_type
-    if group_by == "attack_owner":
-        return attack_owner
-    return attack_type + "::" + attack_owner
+    return attack_type
 
 
 def _clean_label(group_by: str) -> str:
-    if group_by == "attack_type_owner":
-        return "none::none"
     return "none"
 
 

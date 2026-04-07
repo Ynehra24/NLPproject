@@ -71,7 +71,6 @@ def main() -> None:
             "predicted_label": np.where(ai_scores >= threshold, "ai", "human"),
             "threshold_used": float(threshold),
             "attack_type": df["attack_type"],
-            "attack_owner": df["attack_owner"],
             "source": df.get("source"),
         }
     )

@@ -99,7 +99,7 @@ def _mine_hard_examples(pred_df: pd.DataFrame, max_hard_per_class: int) -> pd.Da
     if selected.empty:
         return selected
 
-    keep_cols = [c for c in ["id", "text", "source", "attack_type", "attack_owner", "generator_model"] if c in selected.columns]
+    keep_cols = [c for c in ["id", "text", "source", "attack_type", "generator_model"] if c in selected.columns]
     mined = selected[keep_cols].copy()
     mined["id"] = mined["id"].astype(str) + "__adaptive"
     return mined

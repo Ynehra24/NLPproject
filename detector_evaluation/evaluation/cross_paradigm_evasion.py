@@ -44,8 +44,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--group-by",
-        choices=["attack_type", "attack_owner", "attack_type_owner"],
-        default="attack_type_owner",
+        choices=["attack_type"],
+        default="attack_type",
         help="Condition grouping used for evasion summaries",
     )
     parser.add_argument(
@@ -58,13 +58,7 @@ def parse_args() -> argparse.Namespace:
 
 def _condition_label(df: pd.DataFrame, group_by: str) -> pd.Series:
     attack_type = df.get("attack_type", pd.Series(["none"] * len(df))).fillna("none").astype(str)
-    attack_owner = df.get("attack_owner", pd.Series(["none"] * len(df))).fillna("none").astype(str)
-
-    if group_by == "attack_type":
-        return attack_type
-    if group_by == "attack_owner":
-        return attack_owner
-    return attack_type + "::" + attack_owner
+    return attack_type
 
 
 def _load_and_validate(scores_dir: Path) -> pd.DataFrame:
@@ -84,13 +78,10 @@ def _load_and_validate(scores_dir: Path) -> pd.DataFrame:
         out = df.copy()
         if "attack_type" not in out.columns:
             out["attack_type"] = "none"
-        if "attack_owner" not in out.columns:
-            out["attack_owner"] = "none"
 
         out["id"] = out["id"].astype(str)
         out["detector_name"] = out["detector_name"].astype(str)
         out["attack_type"] = out["attack_type"].fillna("none").astype(str)
-        out["attack_owner"] = out["attack_owner"].fillna("none").astype(str)
         out["source"] = out["source"].astype(str)
         out["ai_score"] = out["ai_score"].astype(float)
         out["threshold_used"] = out["threshold_used"].astype(float)
@@ -103,7 +94,6 @@ def _load_and_validate(scores_dir: Path) -> pd.DataFrame:
                     "detector_name",
                     "source",
                     "attack_type",
-                    "attack_owner",
                     "evaded",
                 ]
             ]
@@ -134,7 +124,7 @@ def _build_wide_ai(df: pd.DataFrame, selected_detectors: List[str], group_by: st
     meta = (
         subset.sort_values(["id", "detector_name"])
         .groupby("id", as_index=False)
-        .first()[["id", "attack_type", "attack_owner", "condition"]]
+        .first()[["id", "attack_type", "condition"]]
     )
 
     wide = (

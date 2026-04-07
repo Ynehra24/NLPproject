@@ -165,7 +165,6 @@ def main() -> None:
             "threshold_used": float(threshold),
             "watermark_z": z_scores,
             "attack_type": df["attack_type"],
-            "attack_owner": df["attack_owner"],
             "source": df.get("source"),
         }
     )

@@ -7,7 +7,7 @@ DATA_DIR = ROOT_DIR / "data"
 RESULTS_DIR = ROOT_DIR / "results"
 
 REQUIRED_COLUMNS = ["id", "text"]
-OPTIONAL_COLUMNS = ["source", "generator_model", "attack_type", "attack_owner"]
+OPTIONAL_COLUMNS = ["source", "generator_model", "attack_type"]
 
 SOURCE_MAP = {
     "human": 0,
@@ -15,6 +15,5 @@ SOURCE_MAP = {
 }
 
 DEFAULT_ATTACK_TYPE = "none"
-DEFAULT_ATTACK_OWNER = "none"
 
 EPS = 1e-12

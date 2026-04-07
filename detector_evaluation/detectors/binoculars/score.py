@@ -113,7 +113,6 @@ def main() -> None:
             "threshold_used": float(threshold),
             "binoculars_ratio": ratios,
             "attack_type": df["attack_type"],
-            "attack_owner": df["attack_owner"],
             "source": df.get("source"),
         }
     )

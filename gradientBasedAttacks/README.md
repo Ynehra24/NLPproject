@@ -16,11 +16,11 @@ Combines two evasion paradigms under a single composite loss:
 L = λ · L_grad  +  (1 − λ) · L_rl  +  α · L_sem
 ```
 
-| Term | Type | What it does |
-|---|---|---|
-| `L_grad` | White-box gradient | Backprop from surrogate RoBERTa through pseudo-embeddings into LoRA adapter |
-| `L_rl` | Black-box RL (GRPO) | Reward = 1 − detector_confidence; policy update without gradient access |
-| `L_sem` | Quality constraint | BERTScore cosine sim between original and paraphrase ≥ 0.92 |
+| Term     | Type                | What it does                                                                |
+| -------- | ------------------- | --------------------------------------------------------------------------- |
+| `L_grad` | White-box gradient  | Backprop from surrogate RoBERTa through pseudo-embeddings into LoRA adapter |
+| `L_rl`   | Black-box RL (GRPO) | Reward = 1 − detector_confidence; policy update without gradient access     |
+| `L_sem`  | Quality constraint  | BERTScore cosine sim between original and paraphrase ≥ 0.92                 |
 
 A tunable **λ** sweeps from pure gradient (λ=1, GradEscape replica) to pure RL
 (λ=0, AuthorMist replica). The hybrid at intermediate λ is the core novelty —
@@ -93,19 +93,19 @@ gradientBasedAttacks/
 
 ### Eval 1 — RoBERTa (500 samples, HC3)
 
-| Metric | Value |
-|---|---|
-| AI Detection Rate | 99.4% |
+| Metric                       | Value |
+| ---------------------------- | ----- |
+| AI Detection Rate            | 99.4% |
 | Avg AI confidence on AI text | 99.3% |
-| False Positive Rate | 0.8% |
+| False Positive Rate          | 0.8%  |
 
 ### Eval 2 — Cross-Paradigm (1000 samples, HC3)
 
-| Detector | Paradigm | Samples | AI Det. Rate | FPR |
-|---|---|---|---|---|
-| RoBERTa | Neural classifier | 1000 | 98.9% | 0.5% |
-| DetectGPT | Statistical zero-shot | 200 | 87.5% | 10.5% |
-| Binoculars | Likelihood ratio | — | Deferred (Falcon-7B) | — |
+| Detector   | Paradigm              | Samples | AI Det. Rate         | FPR   |
+| ---------- | --------------------- | ------- | -------------------- | ----- |
+| RoBERTa    | Neural classifier     | 1000    | 98.9%                | 0.5%  |
+| DetectGPT  | Statistical zero-shot | 200     | 87.5%                | 10.5% |
+| Binoculars | Likelihood ratio      | —       | Deferred (Falcon-7B) | —     |
 
 **Key finding:** 11.4pp cross-paradigm gap between RoBERTa and DetectGPT —
 directly motivating the hybrid evader.
@@ -133,14 +133,13 @@ python scripts/prepare_splits.py        # builds train/val/test.csv
 
 Input schema (matches unified pipeline):
 
-| Column | Required | Description |
-|---|---|---|
-| `id` | ✅ | Unique sample id |
-| `text` | ✅ | Raw text |
-| `source` | recommended | `"human"` or `"ai"` |
-| `attack_type` | recommended | `"gradient"` for this module |
-| `attack_owner` | recommended | `"udaiveer"` |
-| `generator_model` | optional | `"gpt3.5-turbo"` etc. |
+| Column            | Required    | Description                  |
+| ----------------- | ----------- | ---------------------------- |
+| `id`              | ✅          | Unique sample id             |
+| `text`            | ✅          | Raw text                     |
+| `source`          | recommended | `"human"` or `"ai"`          |
+| `attack_type`     | recommended | `"gradient"` for this module |
+| `generator_model` | optional    | `"gpt3.5-turbo"` etc.        |
 
 ---
 
