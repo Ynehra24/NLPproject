@@ -17,7 +17,7 @@ All detectors operate on the same input contract, ensuring fair comparison and r
 
 ## What This Repository Section Contains
 
-- **Unified input contract**: All detectors accept the same CSV/JSONL schema (id, text, source, attack_type, attack_owner, generator_model)
+- **Unified input contract**: All detectors accept the same CSV/JSONL schema (id, text, source, attack_type, generator_model)
 - **Six detector implementations**: Each with standardized score output (0–1 or z-scores, normalized to sigmoid probability)
 - **Unified runner** (`evaluation/run_all.py`): Orchestrates all detectors from a single command
 - **Aggregation pipeline**: Groups metrics by attack type and computes robustness deltas versus clean condition
@@ -53,7 +53,8 @@ detector_evaluation/ (Root)
   |-- evaluate_attack.py                # One-command workflow for attack data evaluation
   |-- gemini_report_writer.py           # Generate markdown report via Gemini API
   |-- latency_benchmark.py              # Runtime performance benchmarking
-  |-- merge_attack_data.py              # Merge multiple attack CSVs with auto-type inference
+  |-- paired_to_long.py                 # Convert mapped pair CSV to detector-ready long format
+  |-- paired_analysis.py                # Paired score-drop and flip-rate analysis
   |-- plots.py                          # Generate heatmaps (AUROC & ASR by detector/attack)
   |-- prepare_hc3.py                    # Prepare HC3 dataset splits
   |-- run_all.py                        # Unified orchestrator for all 6 detectors
@@ -193,7 +194,6 @@ python -m pip install -r requirements.txt
   - "gradient" (gradient-based perturbation; e.g., text-attack library)
   - "char" (character-level noise or typos)
   - _Custom values allowed_; used for grouping in metrics aggregation
-- **attack_owner** (string): Identifier of who/what applied the attack (optional team split identifier)
 - **generator_model** (string): Which model generated AI text (e.g., "gpt3.5-turbo", "gpt4", "llama2")
 
 ### Schema Validation
@@ -215,11 +215,11 @@ Checks:
 ### CSV Example
 
 ```csv
-id,text,source,attack_type,attack_owner,generator_model
+id,text,source,attack_type,generator_model
 sample_001,The quick brown fox jumps over the lazy dog.,human,none,,
 sample_002,Machine learning enables computers to learn from data without explicit instructions.,ai,none,,gpt3.5-turbo
-sample_003,ML enables computational systems to adapt without pre-programmed algorithms.,ai,paraphrase,contributor_b,gpt3.5-turbo
-sample_004,The rapid auburn animal bounded across the slumbering canine.,human,gradient,contributor_a,
+sample_003,ML enables computational systems to adapt without pre-programmed algorithms.,ai,paraphrase,gpt3.5-turbo
+sample_004,The rapid auburn animal bounded across the slumbering canine.,human,gradient,
 ```
 
 ### JSONL Example
@@ -227,7 +227,7 @@ sample_004,The rapid auburn animal bounded across the slumbering canine.,human,g
 ```jsonl
 {"id": "sample_001", "text": "The quick brown fox jumps over the lazy dog.", "source": "human", "attack_type": "none"}
 {"id": "sample_002", "text": "Machine learning enables computers to learn from data without explicit instructions.", "source": "ai", "attack_type": "none", "generator_model": "gpt3.5-turbo"}
-{"id": "sample_003", "text": "ML enables computational systems to adapt without pre-programmed algorithms.", "source": "ai", "attack_type": "paraphrase", "attack_owner": "contributor_b", "generator_model": "gpt3.5-turbo"}
+{"id": "sample_003", "text": "ML enables computational systems to adapt without pre-programmed algorithms.", "source": "ai", "attack_type": "paraphrase", "generator_model": "gpt3.5-turbo"}
 ```
 
 ### Size Recommendations
@@ -501,46 +501,84 @@ python -m detectors.stats_baseline.score \
 
 ## Evaluating Team Attack Data
 
-To evaluate attack implementations from team members (e.g., Contributor A's gradient attack, Contributor B's paraphrasing, etc.):
+Use the paired workflow as the default evaluation path.
 
-### Workflow
+### Paired Workflow
 
-1. **Collect attack outputs**: Each team member should output a CSV/JSONL with attack-transformed text
-2. **Combine**: Merge all attack outputs into a single evaluation CSV (or keep separate and score each)
-3. **Validate schema**:
-   ```bash
-   python -m evaluation.validate_schema --input combined_attacks.csv
-   ```
-4. **Score under attacks**:
-   ```bash
-   python -m evaluation.run_all \
-     --input combined_attacks.csv \
-     --output-dir results/detector_scores_attacks \
-     --device cuda \
-     --run-detectgpt --run-fast-detectgpt --run-binoculars --run-watermark \
-     --roberta-model-dir results/roberta_model
-   ```
-5. **Aggregate per-attack metrics**:
-   ```bash
-   python -m evaluation.aggregate_results \
-     --scores-dir results/detector_scores_attacks \
-     --output results/attack_eval_tables/attack_robustness_summary.csv
-   ```
-6. **Compare robustness**: See which detectors (and which attacks) cause the largest AUROC drops
+If teammates provide mapped pairs (`original_text` + `humanized_text` for the same sample), use this stronger pipeline.
 
-### Example Attack Workflow
+**Paired input schema (minimum):**
 
-Suppose Contributor A generates prompt-injection attacks, Contributor B creates paraphrased variants:
+- `pair_id`
+- `original_text`
+- `humanized_text`
+- `attack_type`
 
-```
-attacks_outputs/
-  attack_prompts/
-    attack_samples.csv  (attack_type="prompt", attack_owner="contributor_a")
-  attack_paraphrase/
-    attack_samples.csv  (attack_type="paraphrase", attack_owner="contributor_b")
+Optional columns:
+
+- `generator_model`
+- `source_original`, `source_humanized` (default assumed `ai` for both)
+
+Notes:
+
+- Keep AI-origin labels as `ai` for both original and humanized text.
+- Attack success is measured when a humanized AI-origin sample is predicted as `human`.
+- Keep `pair_id` stable across all variants of the same source sample.
+
+**Step 1: Convert paired CSV to long format**
+
+```bash
+python -m evaluation.paired_to_long \
+  --input teammate_pairs.csv \
+  --output paired_long.csv
 ```
 
-Combine these, score them all together, and inspect delta metrics per attack_owner.
+**Step 2: Run detector evaluation on long format**
+
+```bash
+python -m evaluation.evaluate_attack \
+  --input paired_long.csv \
+  --output-dir results/attack_eval_paired \
+  --model-dir results/roberta_model \
+  --device cpu
+```
+
+**Step 3: Run paired robustness analysis**
+
+```bash
+python -m evaluation.paired_analysis \
+  --scores-dir results/attack_eval_paired/scores \
+  --paired-long paired_long.csv \
+  --output results/attack_eval_paired/paired_summary.csv
+```
+
+**Step 4: Run disagreement-ensemble novelty analysis**
+
+```bash
+python -m evaluation.disagreement_ensemble \
+  --scores-dir results/attack_eval_paired/scores \
+  --output-dir results/attack_eval_paired/ensemble \
+  --allow-missing-detectors
+```
+
+**One-command runner (all steps above):**
+
+```bash
+python -m evaluation.run_paired_pipeline \
+  --pairs-dir data/teammate_pairs \
+  --output-dir results/attack_eval_paired \
+  --model-dir results/roberta_model \
+  --device cpu \
+  --skip-report
+```
+
+By default, the one-command runner also executes the novelty step (`evaluation.disagreement_ensemble`) when both `human` and `ai` labels exist in detector scores. Use `--skip-novelty` to disable it.
+
+Paired summary adds causal metrics unavailable in aggregate-only mode:
+
+- mean/median score drop (`original - humanized`)
+- flip rate (original predicted `ai`, humanized predicted `human`)
+- conditional flip rate among originally detected AI samples
 
 ## Architecture & Design Patterns
 
@@ -884,53 +922,47 @@ Outputs:
 - `results/adaptive_retrain/round_*/attack_eval_roberta_scores.csv`
 - `results/adaptive_retrain/adaptive_retrain_summary.csv`
 
-### 4) Evaluate Attack Data
+### 4) Evaluate Paired Attack Data
 
-One-command workflow to evaluate attack-contributed data with all 6 detectors:
+Run the paired pipeline end-to-end:
 
 ```bash
+python -m evaluation.paired_to_long \
+  --input teammate_pairs.csv \
+  --output paired_long.csv
+
 python -m evaluation.evaluate_attack \
-  --input attack_data.csv \
-  --output-dir results/attack_eval \
+  --input paired_long.csv \
+  --output-dir results/attack_eval_paired \
   --model-dir results/roberta_model \
-  --device cpu \
-  --detectgpt-perturb 2
+  --device cpu
+
+python -m evaluation.paired_analysis \
+  --scores-dir results/attack_eval_paired/scores \
+  --paired-long paired_long.csv \
+  --output results/attack_eval_paired/paired_summary.csv
+
+python -m evaluation.disagreement_ensemble \
+  --scores-dir results/attack_eval_paired/scores \
+  --output-dir results/attack_eval_paired/ensemble \
+  --allow-missing-detectors
 ```
-
-**Workflow**:
-
-1. Normalize attack CSV (requires `text`; auto-adds `id`; converts `label` to `source` when available)
-2. Run all 6 detectors on normalized input
-3. Aggregate metrics (AUROC, accuracy, F1, precision, recall per detector)
-4. Generate plots (ROC curves, confusion matrices, etc.)
-5. Create markdown report via Gemini API (summarizes findings)
 
 **Outputs**:
 
-- `results/attack_eval/scores/` — Raw detector predictions
-- `results/attack_eval/metrics.csv` — Performance summary table
-- `results/attack_eval/figures/` — Visualization plots
-- `results/attack_eval/reports/attack_report.md` — AI-generated summary report
-
-**With Gemini API key** (for report generation):
-
-```bash
-$env:GEMINI_API_KEY = "your-api-key"
-python -m evaluation.evaluate_attack \
-  --input attack_data.csv \
-  --output-dir results/attack_eval \
-  --api-key-env GEMINI_API_KEY
-```
-
-**Skip report** (if Gemini API unavailable):
-
-```bash
-python -m evaluation.evaluate_attack \
-  --input attack_data.csv \
-  --output-dir results/attack_eval \
-  --skip-report
-```
+- `results/attack_eval_paired/scores/` — Raw detector predictions
+- `results/attack_eval_paired/metrics.csv` — Aggregate per-attack metrics
+- `results/attack_eval_paired/figures/` — Plots from aggregate + raw score analysis:
+  - `auroc_by_detector_and_attack.png`
+  - `asr_by_detector_and_attack.png`
+  - `roc_curves_by_detector.png`
+  - `confusion_matrices_by_detector.png`
+- `results/attack_eval_paired/paired_summary.csv` — Paired causal metrics (score drops, flip rates)
+- `results/attack_eval_paired/ensemble/ensemble_ablation_metrics.csv` — Novelty ablations (`mean_of_scores`, `logreg_base`, `logreg_disagreement_augmented`, `oracle_upper_bound`)
+- `results/attack_eval_paired/ensemble/disagreement_ks_tests.csv` — KS-test validation for disagreement signal
+- `results/attack_eval_paired/ensemble/ensemble_feature_table.csv` — Fused features including disagreement variance
+- `results/attack_eval_paired/reports/attack_report.md` — Optional Gemini markdown summary
 
 ---
 
-**Last updated**: March 14, 2026
+**Last updated**: April 8, 2026

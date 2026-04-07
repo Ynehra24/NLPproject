@@ -145,6 +145,8 @@ def main() -> None:
             str(metrics_csv),
             "--output-dir",
             str(figures_dir),
+            "--scores-dir",
+            str(scores_dir),
         ]
     )
     
