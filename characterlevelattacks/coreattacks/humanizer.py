@@ -77,13 +77,20 @@ def apply_synonym_swap(token: str, tag: str) -> str:
     return random.choice(syns) if syns else token
 
 def apply_invisible_perturbation(text: str) -> str:
-    """Inserts Zero-Width Spaces (U+200B) between virtually every character to incinerate BPE tokenization."""
-    # Break into words, and for 50% of words, insert ZWSP between every char
+    """Insert sparse Zero-Width Spaces (U+200B) to minimally disrupt tokenization while keeping readability."""
     words = text.split()
     new_words = []
     for w in words:
-        if random.random() < 0.6: # 60% of words get internal ZWSPs
-            new_words.append("\u200b".join(list(w)))
+        # Only perturb a subset of words (30%) and only sparsely between chars (25% per char)
+        if random.random() < 0.3 and len(w) > 1:
+            chars = []
+            for ch in w:
+                chars.append(ch)
+                if ch.isalnum() and random.random() < 0.25:
+                    chars.append("\u200b")
+            # Avoid trailing ZWSP
+            new_w = "".join(chars).rstrip("\u200b")
+            new_words.append(new_w)
         else:
             new_words.append(w)
     return " ".join(new_words)
@@ -120,47 +127,56 @@ def generate_candidates(text: str, register: str, n=20) -> List[str]:
     # Normalize for ZWSP before splitting
     text_clean = text.replace('\u200b', '')
     tokens = text_clean.split()
-    # POS tagging for synonym swaps
-    tagged_tokens = pos_tag(tokens)
-    
+    # Only character-level perturbations allowed; preserve token boundaries and words
     allowed_emojis = FORMAL_EMOTES if register == 'formal' else INFORMAL_EMOTES
-    
+
     for _ in range(n):
         new_tokens = []
-        for word, tag in tagged_tokens:
-            prob = random.random()
-            
-            if prob < 0.20: # 20% chance to swap synonym
-                new_tokens.append(apply_synonym_swap(word, tag))
-            elif prob < 0.35: # 15% chance for homoglyph/diacritic
+        for word in tokens:
+            p = random.random()
+            if p < 0.35:  # 35% tokens get character-level perturbation
                 mode = random.choice(['h', 'd'])
-                new_tokens.append(apply_homoglyph(word, rate=0.6) if mode=='h' else apply_diacritic(word, rate=0.6))
-            elif prob < 0.45: # 10% chance for case scramble
-                new_tokens.append(apply_case_scramble(word))
+                if mode == 'h':
+                    # moderate homoglyph replacement rate — preserves readability and similarity
+                    new_word = apply_homoglyph(word, rate=0.45)
+                else:
+                    new_word = apply_diacritic(word, rate=0.45)
+                new_tokens.append(new_word)
             else:
                 new_tokens.append(word)
-        
-        # Emoji and Invisible insertions
-        if random.random() < 0.5:
-            idx = random.randint(0, len(new_tokens))
+
+        # Emoji insertion: small chance, explicit token only
+        if random.random() < 0.10:
+            idx = random.randint(0, max(0, len(new_tokens)))
             new_tokens.insert(idx, random.choice(allowed_emojis))
-            
+
         cand_text = ' '.join(new_tokens)
-        
-        # Aggressive ZWSP
-        if random.random() < 0.8: # 80% chance for ZWSP incineration
-            cand_text = apply_invisible_perturbation(cand_text)
-            
         candidates.add(cand_text)
     return list(candidates)
 
 # ---------------------------
-# Main Humanizer Function
+# Readability & Main Humanizer
 # ---------------------------
+def readability_score(text: str) -> float:
+    """Lightweight readability proxy in [0,1]: fraction of known words (wordnet) and preferred avg token length."""
+    t = text.replace('\u200b', ' ')
+    tokens = [tok for tok in re.findall(r"\b\w[\w']*\b", t)]
+    if not tokens:
+        return 0.0
+    known = 0
+    for tok in tokens:
+        if wordnet.synsets(tok.lower()):
+            known += 1
+    known_frac = known / len(tokens)
+    avg_len = sum(len(tok) for tok in tokens) / len(tokens)
+    # Prefer avg token length around 4-7; penalize overly long tokens
+    length_score = max(0.0, 1 - max(0.0, (avg_len - 7) / 8))
+    return 0.6 * known_frac + 0.4 * length_score
+
 def humanize(text: str, iterations: int = 5, beam_width: int = 5) -> str:
     """
     Takes raw AI text and returns an 'alternated' (humanized) version
-    optimized by the composite score S.
+    optimized by a combined score that strongly favors similarity (S).
     """
     register = get_register(text)
     print(f"Applying AGGRESSIVE {register.upper()} humanization...")
@@ -172,14 +188,19 @@ def humanize(text: str, iterations: int = 5, beam_width: int = 5) -> str:
         scored_cands = []
         for c in cands:
             res = composite_score(text, c)
-            # Penalize ZWSP-heavy texts slightly in S but reward them indirectly via evasion
-            # S is purely for similarity/fluency here, doesn't account for detector
-            scored_cands.append((res['S'], c))
+            S = res.get('S', 0.0)
+            R = readability_score(c)
+            emoji_count = sum(1 for ch in c if ch in emoji.EMOJI_DATA)
+            emoji_ratio = emoji_count / max(1, len(c.split()))
+            # Heavily favor S to keep similarity high; small boost from readability; slight penalty for emojis
+            combined = 0.92 * S + 0.07 * R - 0.01 * emoji_ratio
+            scored_cands.append((combined, S, R, emoji_ratio, c))
         
+        # Sort by combined score descending
         scored_cands.sort(key=lambda x: x[0], reverse=True)
-        top_score, top_text = scored_cands[0]
+        top_combined, top_S, top_R, top_emoji, top_text = scored_cands[0]
         
-        print(f"  Iteration {i+1}: Best S = {top_score:.4f}")
+        print(f"  Iteration {i+1}: Combined={top_combined:.4f} | S={top_S:.4f} | R={top_R:.3f} | EMO={top_emoji:.3f}")
         current_text = top_text 
             
     return current_text
