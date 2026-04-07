@@ -1,0 +1,9 @@
+metric,value
+detector,RoBERTa (Hello-SimpleAI/chatgpt-detector-roberta)
+dataset,HC3 (all split)
+ai_samples,500
+human_samples,500
+ai_detection_rate,99.4%
+avg_ai_confidence_on_ai,99.3%
+false_positive_rate,0.8%
+avg_ai_confidence_on_human,0.9%

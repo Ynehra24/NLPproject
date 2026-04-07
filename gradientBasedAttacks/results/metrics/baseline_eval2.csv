@@ -1,0 +1,4 @@
+detector,paradigm,samples,ai_detection_rate,fpr,notes
+RoBERTa,neural_classifier,1000,98.9%,0.5%,Hello-SimpleAI/chatgpt-detector-roberta
+DetectGPT,statistical_zero_shot,200,87.5%,10.5%,Recalibrated threshold 1.039
+Binoculars,likelihood_ratio,deferred,deferred,deferred,Requires Falcon-7B (14GB VRAM)

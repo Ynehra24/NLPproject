@@ -1,0 +1,29 @@
+IMPLEMENTATION PLAN — Gradient-Based Adversarial Evasion
+=========================================================
+Author: Udaiveer Singh (U20230017)
+Dataset: HC3 full (~25K QA pairs, all.jsonl)
+
+STATUS
+------
+[x] Eval 1: RoBERTa baseline (500 samples) — AI Det. Rate 99.4%, FPR 0.8%
+[x] Eval 2: RoBERTa 1000 samples — 98.9% / 0.5% FPR
+[x] Eval 2: DetectGPT 200 samples — 87.5% / 10.5% FPR (recalibrated threshold 1.039)
+[ ] Eval 2: Binoculars — deferred, needs Falcon-7B / Colab Pro
+[ ] Phase 2: LoRA adapter training (evader/lora_adapter/model.py)
+[ ] Phase 2: Pseudo-embedding gradient bridge (evader/pseudo_embedding/grad_loss.py)
+[ ] Phase 2: GRPO RL trainer (evader/rl_trainer/grpo.py)
+[ ] Phase 3: λ-sweep ablation {0, 0.25, 0.5, 0.75, 1.0}
+[ ] Phase 3: Iterative inference loop ASR@K (K=1,2,3,5)
+[ ] Phase 3: Cross-dataset test on MAGE benchmark
+[ ] Eval 3: Full metrics — ASR, CPTR, BERTScore, ROUGE-L, GRUEN
+
+CORE HYPOTHESIS
+---------------
+Intermediate λ (0.25-0.75) achieves higher CPTR on black-box detectors
+than either pure gradient (λ=1) or pure RL (λ=0).
+
+INTEGRATION
+-----------
+Output: results/evader_outputs/lambda_X/evaded.csv
+Schema: id, text, source=ai, attack_type=gradient, attack_owner=udaiveer
+Pipeline: ../detector_evaluation/evaluation/run_all.py --input evaded.csv

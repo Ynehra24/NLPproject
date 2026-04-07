@@ -107,6 +107,6 @@ def create_sample_dataset(path, n=100):
 
 if __name__ == "__main__":
     # 🔁 Change this path
-    path = "/Users/yatharthnehva/NLPproject/characterlevelattacks/stylometric/SPGC"
+    path = "/Users/yatharthnehva/NLPproject/characterlevelattacks/stylometric/SPGC/gutenberg_en_20k.parquet"
 
     create_sample_dataset(path, n=100)
