@@ -1,0 +1,194 @@
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/attr_value.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/tensor.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/resource_handle.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/tensor_shape.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/types.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/full_type.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/function.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/node_def.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/op_def.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/graph.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/graph_debug_info.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/versions.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/protobuf/config.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at xla/tsl/protobuf/coordination_config.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/cost_graph.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/step_stats.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/allocation_description.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/framework/tensor_description.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/protobuf/cluster.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/google/protobuf/runtime_version.py:98: UserWarning: Protobuf gencode version 5.28.3 is exactly one major version older than the runtime version 6.31.1 at tensorflow/core/protobuf/debug.proto. Please update the gencode to avoid compatibility violations in the next runtime release.
+  warnings.warn(
+sacrebleu not installed — BLEU scores will be skipped.
+bert_score not installed — BERTScore will be skipped.
+rouge_score not installed — ROUGE-L will be skipped.
+10:40:51 | INFO | main | Loading surrogate detector: Hello-SimpleAI/chatgpt-detector-roberta
+10:40:54 | INFO | data_utils | HumanCorpusStats loaded from outputs/checkpoints/human_stats.json
+10:40:54 | INFO | evader | Loading evader backbone: eugenesiow/bart-paraphrase
+10:40:56 | INFO | pseudo_embeddings | PseudoEmbeddingInjector ready | detector=RobertaForSequenceClassification | emb_dim=768
+10:40:56 | INFO | stylometric_loss | StylometricLoss | sentence_end_ids=[4, 50118, 328, 116, 734, 479] | target_entropy=6.898 | n_bins=25 | burstiness_w=0.70 | entropy_w=0.30
+10:40:56 | INFO | evader | StyleAwareEvader ready | α=0.10 β=0.55 γ=0.25 δ=0.10
+10:40:56 | INFO | data_utils | AITextDataset loaded 2000 samples from data/train_ai_text.txt
+10:40:56 | INFO | data_utils | AITextDataset loaded 7053 samples from data/eval_ai_text.txt
+10:40:56 | INFO | trainer | Starting Two-Phase Training
+  Phase 1 (Warm-Up): 2 epochs
+  Phase 2 (Adversarial): 3 epochs
+  Batch size: 4 | Grad accum: 4 | Device: mps
+10:40:56 | INFO | trainer | ============================================================
+PHASE 1: WARM-UP (Reconstruction/Paraphrase SFT)
+Epochs: 2 | Steps/epoch: 500 | LR: 3.0e-05
+============================================================
+10:41:17 | INFO | trainer | [Phase1 E1 S25] recon_loss=6.6137 lr=1.80e-06
+10:41:37 | INFO | trainer | [Phase1 E1 S50] recon_loss=6.8713 lr=3.60e-06
+10:41:56 | INFO | trainer | [Phase1 E1 S75] recon_loss=3.3218 lr=5.40e-06
+10:42:16 | INFO | trainer | [Phase1 E1 S100] recon_loss=4.3475 lr=7.50e-06
+10:42:37 | INFO | trainer | [Phase1 E1 S125] recon_loss=6.1825 lr=9.30e-06
+10:42:56 | INFO | trainer | [Phase1 E1 S150] recon_loss=3.1801 lr=1.11e-05
+10:43:16 | INFO | trainer | [Phase1 E1 S175] recon_loss=4.4599 lr=1.29e-05
+10:43:37 | INFO | trainer | [Phase1 E1 S200] recon_loss=1.3631 lr=1.50e-05
+10:43:58 | INFO | trainer | [Phase1 E1 S225] recon_loss=1.9721 lr=1.68e-05
+10:44:18 | INFO | trainer | [Phase1 E1 S250] recon_loss=1.5623 lr=1.86e-05
+10:44:38 | INFO | trainer | [Phase1 E1 S275] recon_loss=2.8531 lr=2.04e-05
+10:44:58 | INFO | trainer | [Phase1 E1 S300] recon_loss=2.2418 lr=2.25e-05
+10:45:18 | INFO | trainer | [Phase1 E1 S325] recon_loss=1.1581 lr=2.43e-05
+10:45:38 | INFO | trainer | [Phase1 E1 S350] recon_loss=1.3750 lr=2.61e-05
+10:45:58 | INFO | trainer | [Phase1 E1 S375] recon_loss=0.8934 lr=2.79e-05
+10:46:19 | INFO | trainer | [Phase1 E1 S400] recon_loss=0.4345 lr=3.00e-05
+10:46:39 | INFO | trainer | [Phase1 E1 S425] recon_loss=0.3990 lr=2.98e-05
+10:46:58 | INFO | trainer | [Phase1 E1 S450] recon_loss=0.8339 lr=2.96e-05
+10:47:19 | INFO | trainer | [Phase1 E1 S475] recon_loss=0.3534 lr=2.94e-05
+10:47:40 | INFO | trainer | [Phase1 E1 S500] recon_loss=0.6394 lr=2.92e-05
+10:47:40 | INFO | trainer | [Phase1 Epoch 1] avg_loss=2.6727
+/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/transformers/modeling_utils.py:3918: UserWarning: Moving the following attributes in the config to the generation config: {'early_stopping': True, 'num_beams': 4, 'no_repeat_ngram_size': 3}. You are seeing this warning because you've set generation parameters in the model config, as opposed to in the generation config.
+  warnings.warn(
+10:47:41 | INFO | evader | Evader saved to outputs/checkpoints/warmup_epoch_1
+10:47:41 | INFO | trainer | Checkpoint saved → outputs/checkpoints/warmup_epoch_1
+10:48:00 | INFO | trainer | [Phase1 E2 S25] recon_loss=0.2375 lr=2.90e-05
+10:48:21 | INFO | trainer | [Phase1 E2 S50] recon_loss=0.3559 lr=2.88e-05
+10:48:42 | INFO | trainer | [Phase1 E2 S75] recon_loss=0.2234 lr=2.86e-05
+10:49:02 | INFO | trainer | [Phase1 E2 S100] recon_loss=0.2371 lr=2.83e-05
+10:49:23 | INFO | trainer | [Phase1 E2 S125] recon_loss=0.0591 lr=2.81e-05
+10:49:42 | INFO | trainer | [Phase1 E2 S150] recon_loss=0.0954 lr=2.79e-05
+10:50:02 | INFO | trainer | [Phase1 E2 S175] recon_loss=0.0594 lr=2.77e-05
+10:50:23 | INFO | trainer | [Phase1 E2 S200] recon_loss=0.0360 lr=2.75e-05
+10:50:43 | INFO | trainer | [Phase1 E2 S225] recon_loss=0.0179 lr=2.73e-05
+10:51:03 | INFO | trainer | [Phase1 E2 S250] recon_loss=0.0311 lr=2.71e-05
+10:51:23 | INFO | trainer | [Phase1 E2 S275] recon_loss=0.0204 lr=2.69e-05
+10:51:43 | INFO | trainer | [Phase1 E2 S300] recon_loss=0.0114 lr=2.67e-05
+10:52:03 | INFO | trainer | [Phase1 E2 S325] recon_loss=0.0119 lr=2.65e-05
+10:52:23 | INFO | trainer | [Phase1 E2 S350] recon_loss=0.0134 lr=2.63e-05
+10:52:45 | INFO | trainer | [Phase1 E2 S375] recon_loss=0.0401 lr=2.61e-05
+10:53:06 | INFO | trainer | [Phase1 E2 S400] recon_loss=0.0070 lr=2.58e-05
+10:53:28 | INFO | trainer | [Phase1 E2 S425] recon_loss=0.0136 lr=2.56e-05
+10:53:49 | INFO | trainer | [Phase1 E2 S450] recon_loss=0.0063 lr=2.54e-05
+10:54:10 | INFO | trainer | [Phase1 E2 S475] recon_loss=0.0101 lr=2.52e-05
+10:54:31 | INFO | trainer | [Phase1 E2 S500] recon_loss=0.0068 lr=2.50e-05
+10:54:31 | INFO | trainer | [Phase1 Epoch 2] avg_loss=0.0856
+10:54:33 | INFO | evader | Evader saved to outputs/checkpoints/warmup_epoch_2
+10:54:33 | INFO | trainer | Checkpoint saved → outputs/checkpoints/warmup_epoch_2
+10:54:34 | INFO | evader | Evader saved to outputs/checkpoints/warmup_done
+10:54:34 | INFO | trainer | Checkpoint saved → outputs/checkpoints/warmup_done
+10:54:34 | INFO | trainer | Phase 1 (Warm-Up) complete.
+10:54:34 | INFO | trainer | 
+============================================================
+PHASE 2: ADVERSARIAL FINE-TUNING
+Epochs: 3 | Steps/epoch: 500 | LR: 5.0e-06
+============================================================
+/Users/raghav_sarna/Desktop/Drive/Plaksha/Semester 6/AdvNLP/NLPproject/post_generation/pseudo_embeddings.py:254: UserWarning: The .grad attribute of a Tensor that is not a leaf Tensor is being accessed. Its .grad attribute won't be populated during autograd.backward(). If you indeed want the .grad field to be populated for a non-leaf Tensor, use .retain_grad() on the non-leaf Tensor. If you access the non-leaf Tensor by mistake, make sure you access the leaf Tensor instead. See github.com/pytorch/pytorch/pull/30531 for more informations. (Triggered internally at /Users/runner/work/pytorch/pytorch/pytorch/build/aten/src/ATen/core/TensorBody.h:494.)
+  if prob_matrix.grad is not None:
+10:55:05 | INFO | trainer | [E1 S25] loss=2.7265 l_adv=6.3575 l_sem=0.0058 l_style=14.7981 l_recon=0.0100 hp_surr=0.003
+10:55:34 | INFO | trainer | [E1 S50] loss=2.6449 l_adv=5.0572 l_sem=0.0031 l_style=14.7911 l_recon=0.0059 hp_surr=0.251
+10:56:02 | INFO | trainer | [E1 S75] loss=2.7900 l_adv=7.0067 l_sem=0.0028 l_style=14.9806 l_recon=0.0055 hp_surr=0.001
+10:56:30 | INFO | trainer | [E1 S100] loss=2.7456 l_adv=6.6458 l_sem=0.0024 l_style=14.8327 l_recon=0.0052 hp_surr=0.002
+10:56:58 | INFO | trainer | [E1 S125] loss=2.5994 l_adv=4.2595 l_sem=0.0366 l_style=14.6457 l_recon=0.0421 hp_surr=0.263
+10:57:26 | INFO | trainer | [E1 S150] loss=2.6756 l_adv=5.3667 l_sem=0.0081 l_style=14.8410 l_recon=0.0138 hp_surr=0.245
+10:57:54 | INFO | trainer | [E1 S175] loss=2.6728 l_adv=6.6618 l_sem=0.0022 l_style=14.3147 l_recon=0.0149 hp_surr=0.001
+10:58:22 | INFO | trainer | [E1 S200] loss=2.5298 l_adv=4.8449 l_sem=0.0043 l_style=13.9511 l_recon=0.0653 hp_surr=0.251
+10:58:49 | INFO | trainer | [E1 S225] loss=2.4476 l_adv=4.8941 l_sem=0.0204 l_style=13.0544 l_recon=0.1810 hp_surr=0.017
+10:59:17 | INFO | trainer | [E1 S250] loss=2.6414 l_adv=6.8192 l_sem=0.0117 l_style=13.8656 l_recon=0.0748 hp_surr=0.001
+10:59:46 | INFO | trainer | [E1 S275] loss=1.2872 l_adv=6.3854 l_sem=0.0177 l_style=1.7873 l_recon=1.2807 hp_surr=0.003
+11:00:16 | INFO | trainer | [E1 S300] loss=1.2503 l_adv=6.9173 l_sem=0.0095 l_style=2.1072 l_recon=0.9944 hp_surr=0.001
+11:00:44 | INFO | trainer | [E1 S325] loss=1.2044 l_adv=6.4839 l_sem=0.0109 l_style=2.2297 l_recon=0.8980 hp_surr=0.002
+11:01:11 | INFO | trainer | [E1 S350] loss=1.1960 l_adv=2.9263 l_sem=0.0292 l_style=4.0083 l_recon=0.7435 hp_surr=0.496
+11:01:39 | INFO | trainer | [E1 S375] loss=0.8549 l_adv=3.4877 l_sem=0.0379 l_style=0.7702 l_recon=1.0198 hp_surr=0.500
+11:02:07 | INFO | trainer | [E1 S400] loss=1.2941 l_adv=5.9471 l_sem=0.1165 l_style=3.3603 l_recon=0.7816 hp_surr=0.004
+11:02:35 | INFO | trainer | [E1 S425] loss=1.2836 l_adv=0.0050 l_sem=0.7738 l_style=2.5617 l_recon=1.5731 hp_surr=0.995
+11:03:03 | INFO | trainer | [E1 S450] loss=0.8543 l_adv=4.9062 l_sem=0.1448 l_style=1.1365 l_recon=0.7061 hp_surr=0.230
+11:03:32 | INFO | trainer | [E1 S475] loss=0.7772 l_adv=2.5941 l_sem=0.3028 l_style=0.6269 l_recon=0.9823 hp_surr=0.295
+11:04:00 | INFO | trainer | [E1 S500] loss=0.7113 l_adv=0.6589 l_sem=0.2561 l_style=1.9075 l_recon=0.6875 hp_surr=0.766
+11:14:00 | INFO | trainer | [Phase2 Epoch 1] avg_train_loss=1.9640 | eval: {'l_total': '1.2847', 'l_adv': '5.8647', 'human_prob_surrogate': '0.1363', 'l_sem': '0.1099', 'l_label': '0.2198', 'l_semantic': '0.0000', 'l_style': '4.5072', 'kl_burstiness': '0.5294', 'lex_entropy_dev': '13.7888', 'l_fluency': '0.9633', 'mean_entropy': '3.2594', 'l_reconstruction': '0.4068'}
+11:14:03 | INFO | evader | Evader saved to outputs/checkpoints/best
+11:14:03 | INFO | trainer | Checkpoint saved → outputs/checkpoints/best
+11:14:03 | INFO | evader | Evader saved to outputs/checkpoints/epoch_1
+11:14:03 | INFO | trainer | Checkpoint saved → outputs/checkpoints/epoch_1
+11:14:39 | INFO | trainer | [E2 S25] loss=0.6818 l_adv=0.5131 l_sem=0.4301 l_style=0.7269 l_recon=0.9738 hp_surr=0.750
+11:15:10 | INFO | trainer | [E2 S50] loss=0.6563 l_adv=0.0050 l_sem=0.4440 l_style=0.8416 l_recon=0.9402 hp_surr=0.995
+11:15:40 | INFO | trainer | [E2 S75] loss=0.5738 l_adv=0.4727 l_sem=0.3373 l_style=0.4947 l_recon=0.8677 hp_surr=0.787
+11:16:11 | INFO | trainer | [E2 S100] loss=0.5795 l_adv=0.0431 l_sem=0.3521 l_style=0.1521 l_recon=1.0740 hp_surr=0.959
+11:16:40 | INFO | trainer | [E2 S125] loss=0.5971 l_adv=0.0231 l_sem=0.3417 l_style=1.1413 l_recon=0.7646 hp_surr=0.978
+11:17:08 | INFO | trainer | [E2 S150] loss=0.6862 l_adv=0.0004 l_sem=0.3737 l_style=1.7260 l_recon=0.7475 hp_surr=1.000
+11:17:39 | INFO | trainer | [E2 S175] loss=0.5475 l_adv=0.0184 l_sem=0.3340 l_style=0.6440 l_recon=0.8380 hp_surr=0.982
+11:18:10 | INFO | trainer | [E2 S200] loss=0.4940 l_adv=0.0100 l_sem=0.3613 l_style=0.3031 l_recon=0.8090 hp_surr=0.990
+11:18:37 | INFO | trainer | [E2 S225] loss=0.5412 l_adv=0.0293 l_sem=0.3386 l_style=0.5649 l_recon=0.8450 hp_surr=0.972
+11:19:04 | INFO | trainer | [E2 S250] loss=0.5501 l_adv=0.0240 l_sem=0.2944 l_style=1.0548 l_recon=0.7199 hp_surr=0.976
+11:19:34 | INFO | trainer | [E2 S275] loss=0.5569 l_adv=0.0024 l_sem=0.3606 l_style=0.7502 l_recon=0.8038 hp_surr=0.998
+11:20:04 | INFO | trainer | [E2 S300] loss=0.5309 l_adv=0.3049 l_sem=0.3551 l_style=0.5219 l_recon=0.7857 hp_surr=0.821
+11:20:32 | INFO | trainer | [E2 S325] loss=0.5282 l_adv=0.0017 l_sem=0.3319 l_style=0.6180 l_recon=0.8054 hp_surr=0.998
+11:21:00 | INFO | trainer | [E2 S350] loss=0.5282 l_adv=0.0009 l_sem=0.3449 l_style=0.6679 l_recon=0.7779 hp_surr=0.999
+11:21:28 | INFO | trainer | [E2 S375] loss=0.5270 l_adv=0.0005 l_sem=0.3783 l_style=0.4054 l_recon=0.8482 hp_surr=1.000
+11:21:57 | INFO | trainer | [E2 S400] loss=0.5095 l_adv=0.0113 l_sem=0.3216 l_style=0.6479 l_recon=0.7546 hp_surr=0.989
+11:22:24 | INFO | trainer | [E2 S425] loss=0.5168 l_adv=0.0006 l_sem=0.3234 l_style=0.7700 l_recon=0.7271 hp_surr=0.999
+11:22:51 | INFO | trainer | [E2 S450] loss=0.5852 l_adv=0.3277 l_sem=0.3099 l_style=1.2505 l_recon=0.6790 hp_surr=0.817
+11:23:18 | INFO | trainer | [E2 S475] loss=0.5091 l_adv=0.0022 l_sem=0.3212 l_style=0.5770 l_recon=0.7823 hp_surr=0.998
+11:23:45 | INFO | trainer | [E2 S500] loss=0.4872 l_adv=0.0008 l_sem=0.3399 l_style=0.3471 l_recon=0.7976 hp_surr=0.999
+11:34:00 | INFO | trainer | [Phase2 Epoch 2] avg_train_loss=0.5603 | eval: {'l_total': '1.0381', 'l_adv': '5.6316', 'human_prob_surrogate': '0.1436', 'l_sem': '0.1614', 'l_label': '0.3228', 'l_semantic': '0.0000', 'l_style': '3.0971', 'kl_burstiness': '0.1874', 'lex_entropy_dev': '9.8865', 'l_fluency': '0.2507', 'mean_entropy': '3.7977', 'l_reconstruction': '0.4184'}
+11:34:03 | INFO | evader | Evader saved to outputs/checkpoints/best
+11:34:03 | INFO | trainer | Checkpoint saved → outputs/checkpoints/best
+11:34:03 | INFO | evader | Evader saved to outputs/checkpoints/epoch_2
+11:34:03 | INFO | trainer | Checkpoint saved → outputs/checkpoints/epoch_2
+11:34:42 | INFO | trainer | [E3 S25] loss=0.5253 l_adv=0.0031 l_sem=0.3876 l_style=0.2397 l_recon=0.8987 hp_surr=0.997
+11:35:09 | INFO | trainer | [E3 S50] loss=0.4657 l_adv=0.0016 l_sem=0.3352 l_style=0.3414 l_recon=0.7503 hp_surr=0.998
+11:35:37 | INFO | trainer | [E3 S75] loss=0.5237 l_adv=0.0008 l_sem=0.3497 l_style=0.4913 l_recon=0.8297 hp_surr=0.999
+11:36:04 | INFO | trainer | [E3 S100] loss=0.5128 l_adv=0.0005 l_sem=0.3113 l_style=0.7775 l_recon=0.7225 hp_surr=1.000
+11:36:31 | INFO | trainer | [E3 S125] loss=0.5368 l_adv=0.0169 l_sem=0.3794 l_style=0.3996 l_recon=0.8690 hp_surr=0.984
+11:36:58 | INFO | trainer | [E3 S150] loss=0.5164 l_adv=0.0032 l_sem=0.3783 l_style=0.5466 l_recon=0.7690 hp_surr=0.997
+11:37:25 | INFO | trainer | [E3 S175] loss=0.4860 l_adv=0.0040 l_sem=0.3134 l_style=0.3909 l_recon=0.7993 hp_surr=0.996
+11:37:52 | INFO | trainer | [E3 S200] loss=0.4975 l_adv=0.0015 l_sem=0.3233 l_style=0.1388 l_recon=0.9170 hp_surr=0.998
+11:38:22 | INFO | trainer | [E3 S225] loss=0.4989 l_adv=0.0016 l_sem=0.3108 l_style=0.5810 l_recon=0.7633 hp_surr=0.998
+11:38:49 | INFO | trainer | [E3 S250] loss=0.5000 l_adv=0.0209 l_sem=0.3229 l_style=0.5946 l_recon=0.7507 hp_surr=0.979
+11:39:17 | INFO | trainer | [E3 S275] loss=0.4767 l_adv=0.0008 l_sem=0.3060 l_style=0.4946 l_recon=0.7471 hp_surr=0.999
+11:39:45 | INFO | trainer | [E3 S300] loss=0.5094 l_adv=0.0101 l_sem=0.3124 l_style=0.7970 l_recon=0.7098 hp_surr=0.990
+11:40:12 | INFO | trainer | [E3 S325] loss=0.4926 l_adv=0.0004 l_sem=0.3763 l_style=0.2345 l_recon=0.8283 hp_surr=1.000
+11:40:40 | INFO | trainer | [E3 S350] loss=0.5097 l_adv=0.0779 l_sem=0.2906 l_style=0.9112 l_recon=0.6722 hp_surr=0.932
+11:41:07 | INFO | trainer | [E3 S375] loss=0.4973 l_adv=0.0008 l_sem=0.3593 l_style=0.0738 l_recon=0.9153 hp_surr=0.999
+11:41:35 | INFO | trainer | [E3 S400] loss=0.4825 l_adv=0.0140 l_sem=0.2868 l_style=0.5940 l_recon=0.7375 hp_surr=0.986
+11:42:02 | INFO | trainer | [E3 S425] loss=0.5024 l_adv=0.0051 l_sem=0.3954 l_style=0.0993 l_recon=0.8867 hp_surr=0.995
+11:42:30 | INFO | trainer | [E3 S450] loss=0.4754 l_adv=0.0029 l_sem=0.3450 l_style=0.1642 l_recon=0.8348 hp_surr=0.997
+11:42:57 | INFO | trainer | [E3 S475] loss=0.4863 l_adv=0.1237 l_sem=0.3145 l_style=0.2482 l_recon=0.8379 hp_surr=0.894
+11:43:25 | INFO | trainer | [E3 S500] loss=0.5028 l_adv=0.0037 l_sem=0.3362 l_style=0.5986 l_recon=0.7508 hp_surr=0.996
+11:53:28 | INFO | trainer | [Phase2 Epoch 3] avg_train_loss=0.5078 | eval: {'l_total': '0.9550', 'l_adv': '5.5357', 'human_prob_surrogate': '0.1465', 'l_sem': '0.1668', 'l_label': '0.3335', 'l_semantic': '0.0000', 'l_style': '2.4357', 'kl_burstiness': '0.1611', 'lex_entropy_dev': '7.7432', 'l_fluency': '0.1929', 'mean_entropy': '4.1991', 'l_reconstruction': '0.4772'}
+11:53:30 | INFO | evader | Evader saved to outputs/checkpoints/best
+11:53:30 | INFO | trainer | Checkpoint saved → outputs/checkpoints/best
+11:53:31 | INFO | evader | Evader saved to outputs/checkpoints/epoch_3
+11:53:31 | INFO | trainer | Checkpoint saved → outputs/checkpoints/epoch_3
+11:53:31 | INFO | trainer | Phase 2 (Adversarial) complete. Best eval loss: 0.9550
+11:53:31 | INFO | trainer | Training complete. Best eval loss: 0.9550

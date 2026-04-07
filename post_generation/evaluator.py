@@ -296,6 +296,8 @@ class EvaderEvaluator:
         """
         assert len(original_texts) == len(paraphrased_texts)
         results: Dict = {}
+        n_samples = len(paraphrased_texts)
+        results["n_eval_samples"] = n_samples
 
         # ---- 1. ASR on white-box surrogate ----
         logger.info("Computing ASR on surrogate detector…")
@@ -306,27 +308,40 @@ class EvaderEvaluator:
             human_label_idx=self.human_label_idx,
             device=self.device,
         )
-        asr = sum(1 for p in surr_preds if p == self.human_label_idx) / len(surr_preds)
+        surrogate_evaded_count = sum(1 for p in surr_preds if p == self.human_label_idx)
+        surrogate_detected_count = n_samples - surrogate_evaded_count
+        asr = surrogate_evaded_count / n_samples
         results["ASR_surrogate"] = asr
         results["mean_human_prob_surrogate"] = float(np.mean(surr_probs))
+        results["surrogate_evaded_count"] = surrogate_evaded_count
+        results["surrogate_detected_count"] = surrogate_detected_count
+        results["surrogate_detected_rate"] = surrogate_detected_count / n_samples
 
         if baseline_asr is not None:
             results["ASR_improvement"] = asr - baseline_asr
 
         # ---- 2. CPTR on black-box detectors ----
-        for blackbox in self.blackbox_models:
+        for idx, blackbox in enumerate(self.blackbox_models):
             if hasattr(blackbox, 'detector_name'):
                 # Handle detector_evaluation abstract detectors
                 name = blackbox.detector_name
                 logger.info("Computing CPTR on: %s", name)
                 ai_scores, _ = blackbox.score_texts(paraphrased_texts)
-                cptr = sum(1 for s in ai_scores if s <= 0.5) / len(ai_scores)
+                evaded_count = sum(1 for s in ai_scores if s <= 0.5)
+                detected_count = n_samples - evaded_count
+                cptr = evaded_count / n_samples
                 results[f"CPTR_{name}"] = cptr
+                results[f"Evaded_count_{name}"] = evaded_count
+                results[f"Detected_count_{name}"] = detected_count
+                results[f"Detected_rate_{name}"] = detected_count / n_samples
                 
                 logger.info("Computing Baseline TNR on: %s", name)
                 orig_ai_scores, _ = blackbox.score_texts(original_texts)
-                baseline_tnr = sum(1 for s in orig_ai_scores if s > 0.5) / len(orig_ai_scores)
+                baseline_detected_count = sum(1 for s in orig_ai_scores if s > 0.5)
+                baseline_tnr = baseline_detected_count / n_samples
                 results[f"Baseline_TNR_{name}"] = baseline_tnr
+                results[f"Baseline_detected_count_{name}"] = baseline_detected_count
+                results[f"Baseline_evaded_count_{name}"] = n_samples - baseline_detected_count
             else:
                 bb_model, bb_tok = blackbox
                 name = getattr(bb_model.config, "_name_or_path", f"blackbox_{idx}")
@@ -336,8 +351,25 @@ class EvaderEvaluator:
                     human_label_idx=self.human_label_idx,
                     device=self.device,
                 )
-                cptr = sum(1 for p in bb_preds if p == self.human_label_idx) / len(bb_preds)
+                evaded_count = sum(1 for p in bb_preds if p == self.human_label_idx)
+                detected_count = n_samples - evaded_count
+                cptr = evaded_count / n_samples
                 results[f"CPTR_{name}"] = cptr
+                results[f"Evaded_count_{name}"] = evaded_count
+                results[f"Detected_count_{name}"] = detected_count
+                results[f"Detected_rate_{name}"] = detected_count / n_samples
+
+                logger.info("Computing Baseline TNR on: %s", name)
+                _, bb_orig_preds = batch_predict(
+                    bb_model, bb_tok, original_texts,
+                    human_label_idx=self.human_label_idx,
+                    device=self.device,
+                )
+                baseline_detected_count = sum(1 for p in bb_orig_preds if p != self.human_label_idx)
+                baseline_tnr = baseline_detected_count / n_samples
+                results[f"Baseline_TNR_{name}"] = baseline_tnr
+                results[f"Baseline_detected_count_{name}"] = baseline_detected_count
+                results[f"Baseline_evaded_count_{name}"] = n_samples - baseline_detected_count
 
         # Also measure baseline detection rate of original AI text
         logger.info("Measuring baseline detection of unmodified AI text…")
@@ -347,7 +379,9 @@ class EvaderEvaluator:
             device=self.device,
         )
         orig_detected_as_ai = sum(1 for p in orig_preds if p != self.human_label_idx)
-        results["baseline_TNR"] = orig_detected_as_ai / len(orig_preds)
+        results["baseline_TNR"] = orig_detected_as_ai / n_samples
+        results["baseline_detected_count_surrogate"] = orig_detected_as_ai
+        results["baseline_evaded_count_surrogate"] = n_samples - orig_detected_as_ai
 
         # ---- 3. Semantic preservation ----
         logger.info("Computing BLEU / ROUGE-L…")
@@ -439,6 +473,7 @@ class EvaderEvaluator:
 
         order = [
             ("ASR_surrogate",          "ASR (surrogate, white-box)"),
+            ("surrogate_detected_rate", "Detected rate (surrogate)"),
             ("baseline_TNR",           "Baseline AI detection rate"),
             ("BLEU",                   "BLEU"),
             ("ROUGE_Lsum",             "ROUGE-Lsum"),
@@ -456,10 +491,24 @@ class EvaderEvaluator:
                 else:
                     print(f"  {label:<40s}  {val}")
 
+        n_samples = results.get("n_eval_samples")
+        if n_samples is not None:
+            ev = results.get("surrogate_evaded_count")
+            det = results.get("surrogate_detected_count")
+            if ev is not None and det is not None:
+                print(f"  Surrogate evaded/detected (count)         {ev}/{det} of {n_samples}")
+
         # Print CPTR entries
         for k, v in results.items():
             if k.startswith("CPTR_"):
                 name = k[5:]
                 print(f"  CPTR [{name:<28s}]  {float(v):.4f}")
+                evaded_key = f"Evaded_count_{name}"
+                detected_key = f"Detected_count_{name}"
+                if evaded_key in results and detected_key in results and n_samples is not None:
+                    print(
+                        f"    evaded/detected (count): {results[evaded_key]}/{results[detected_key]} "
+                        f"of {n_samples}"
+                    )
 
         print("=" * 60 + "\n")

@@ -263,9 +263,9 @@ class JointEvaderLoss(nn.Module):
         adv_loss: AdversarialLoss,
         sem_loss: SemanticLoss,
         sty_loss: StylometricLoss,
-        alpha: float = 0.20,
-        beta: float = 0.40,
-        gamma: float = 0.30,
+        alpha: float = 0.10,
+        beta: float = 0.55,
+        gamma: float = 0.25,
         delta: float = 0.10,
     ):
         super().__init__()

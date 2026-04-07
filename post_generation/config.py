@@ -17,17 +17,19 @@ from typing import List, Optional
 class ModelConfig:
     """Model architecture settings."""
     # Evader: seq2seq model that paraphrases AI text.
+    # Using a BART model already fine-tuned on paraphrase generation.
+    # This gives a strong starting point — the model already knows how to rephrase.
     # BART shares its BPE tokenizer with RoBERTa, so pseudo-embedding
     # multiplication P @ W_emb works without any token remapping.
-    evader_model_name: str = "facebook/bart-base"
+    evader_model_name: str = "eugenesiow/bart-paraphrase"
 
     # Surrogate detector: RoBERTa fine-tuned as binary (AI vs Human) classifier.
     # This is the WHITE-BOX model used during training.
     # At eval time we also run against unseen black-box detectors.
     surrogate_detector_name: str = "Hello-SimpleAI/chatgpt-detector-roberta"
 
-    # Maximum sequence length (tokens).  512 follows both papers.
-    max_length: int = 512
+    # Maximum sequence length (tokens). Reduced to 256 to fit in MPS memory.
+    max_length: int = 256
 
     # Beam width for inference-time text generation.
     num_beams: int = 4
@@ -50,12 +52,13 @@ class LossConfig:
                distribution of generated text and the human-corpus baseline.
     L_fluency — fluency: penalize low-entropy (repetitive) outputs.
     
-    CRITICAL FIX: Reduced alpha (adversarial dominance), increased beta and gamma
-    to allow semantic preservation and stylometric constraints to dominate.
+    KEY INSIGHT: Semantic preservation (beta) must heavily dominate adversarial (alpha).
+    The model should mostly COPY the input, with only subtle adversarial perturbations.
+    If alpha is too high, the model collapses to gibberish that fools the detector.
     """
-    alpha: float = 0.20   # adversarial loss weight (reduced from 0.40)
-    beta: float = 0.40    # semantic/syntactic loss weight (increased from 0.30)
-    gamma: float = 0.30   # stylometric loss weight (unchanged)
+    alpha: float = 0.10   # adversarial loss weight (very conservative)
+    beta: float = 0.55    # semantic/syntactic loss weight (dominant)
+    gamma: float = 0.25   # stylometric loss weight
     delta: float = 0.10   # fluency loss weight (new)
 
     # Semantic loss sub-weights (must sum to 1.0).
@@ -85,52 +88,49 @@ class LossConfig:
 @dataclass
 class TrainingConfig:
     """Training-loop hyperparameters."""
-    # OPTIMIZED FOR M4 PRO (30-45 min training)
-    # MPS memory constraint: batch_size=8 is max for frozen RoBERTa detector overhead
-    # Note: gradient_accumulation=2 keeps effective batch size = 16
-    # NOTE: Change these back for longer training:
-    #   batch_size: 8 → 1
-    #   gradient_accumulation_steps: 2 → 8
-    #   num_epochs: 1 → 3
-    #   human_corpus_sample_size: 2000 → 10000
-    #   log_every: 50 → 2
-    #   save_every: 0 → 500
+    # TWO-PHASE TRAINING STRATEGY:
+    #   Phase 1 (Warm-Up): Standard seq2seq copy/paraphrase training.
+    #     The model learns to generate coherent text that closely matches the input.
+    #   Phase 2 (Adversarial): Gentle adversarial fine-tuning on top of the
+    #     strong paraphrase foundation from Phase 1.
     
-    batch_size: int = 8  # MPS-safe: reduced from 16 (fits in 24GB VRAM)
-    gradient_accumulation_steps: int = 2  # Re-enabled to maintain effective batch=16
-    learning_rate: float = 5e-5
-    num_epochs: int = 1  # Reduced from 3 (one epoch for quick test)
+    batch_size: int = 4  # MPS-safe (fits in 24GB VRAM with detector overhead)
+    gradient_accumulation_steps: int = 4  # Effective batch = 16
+    seed: int = 42
+    
+    # ----- Phase 1: Warm-Up (Reconstruction/Paraphrase SFT) -----
+    warmup_epochs: int = 2           # Epochs of pure seq2seq copy training
+    warmup_learning_rate: float = 3e-5  # Standard fine-tuning LR
+    
+    # ----- Phase 2: Adversarial Fine-Tuning -----
+    num_epochs: int = 3              # Epochs of adversarial training
+    learning_rate: float = 5e-6      # Much lower LR to avoid corruption
     warmup_ratio: float = 0.1
     weight_decay: float = 0.01
     grad_clip: float = 1.0
-    seed: int = 42
 
     # Path to raw AI-generated training texts (one sample per line).
     train_data_path: str = "data/train_ai_text.txt"
     eval_data_path: str = "data/eval_ai_text.txt"
 
     # Human-corpus file used to build the stylometric baseline.
-    # One document per line; sentence splitting is done at runtime.
     human_corpus_path: str = "data/human_corpus.txt"
 
     # How many samples to use when fitting the human baseline histogram.
-    human_corpus_sample_size: int = 2000  # Reduced from 10000 (faster baseline computation)
+    human_corpus_sample_size: int = 2000
 
     # Checkpoint directory.
     output_dir: str = "outputs/checkpoints"
 
     # Log every N steps.
-    log_every: int = 50  # Reduced from 2 (less logging overhead)
+    log_every: int = 25
 
     # Save checkpoint every N steps (0 = epoch-level only).
-    save_every: int = 0  # Disabled intermediate checkpoints (save only at epoch end)
+    save_every: int = 0
     
-    # QUICK TESTING: Limit training samples for faster iteration.
-    # Set to None for full training. Examples:
-    #   500 samples → ~30-45 min on M4 Pro
-    #   1000 samples → ~45-60 min on M4 Pro
-    # Comment out or set to None for full dataset training.
-    max_train_samples: Optional[int] = 500  # Limit to 500 samples for quick test
+    # Limit training samples. Set to None for full dataset.
+    # 2000 samples × 5 total epochs → ~60-90 min on M4 Pro
+    max_train_samples: Optional[int] = 2000
 
 
 @dataclass
