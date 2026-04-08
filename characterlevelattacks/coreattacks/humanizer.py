@@ -1,3 +1,4 @@
+# ...existing code...
 # python
 import sys
 import re
@@ -25,7 +26,7 @@ from composite_scorer import composite_score
 from homoglyph_attack import apply_homoglyph, apply_diacritic
 
 # dynamic emoji loader (uses emoji module and caches)
-from emoji_insertion import load_or_extract_emojis
+from emoji_insertion import load_or_extract_emojis, find_emojis_for_token, get_allowed_emojis
 
 random.seed(42)
 np.random.seed(42)
@@ -46,52 +47,15 @@ _MODELS_LOADED = False
 _SELECTED_DEVICE: Optional[str] = None
 
 # ---------------------------
-# Emoji index helpers (dynamic usage)
+# (local demojize/index helpers removed)
+# Using semantic search from emoji_insertion for token->emoji mapping
 # ---------------------------
-def _demojize_words(e: str) -> List[str]:
-    try:
-        name = emoji.demojize(e)  # e.g. ":grinning_face:"
-        name = name.strip(":").replace("_", " ").lower()
-        return re.findall(r"[a-z0-9]+", name)
-    except Exception:
-        return []
-
-def _build_keyword_index(emoji_list: List[str]) -> Dict[str, Set[str]]:
-    idx: Dict[str, Set[str]] = {}
-    for em in emoji_list:
-        for w in _demojize_words(em):
-            idx.setdefault(w, set()).add(em)
-    return idx
-
-def _expand_index_with_all_emojis(idx: Dict[str, Set[str]]):
-    for em in emoji.EMOJI_DATA.keys():
-        for w in _demojize_words(em):
-            idx.setdefault(w, set()).add(em)
-
-def find_emojis_for_token(token: str) -> List[str]:
-    t = token.lower().strip(".,!?;:\"'()[]{}")
-    if not t:
-        return []
-    candidates = set()
-    # exact token
-    if t in _EMOJI_KEYWORD_INDEX:
-        candidates.update(_EMOJI_KEYWORD_INDEX[t])
-    # substring/key match
-    for k in list(_EMOJI_KEYWORD_INDEX.keys()):
-        if k in t or t in k:
-            candidates.update(_EMOJI_KEYWORD_INDEX[k])
-    # prefix attempts
-    for i in range(1, min(6, len(t) + 1)):
-        pref = t[:i]
-        if pref in _EMOJI_KEYWORD_INDEX:
-            candidates.update(_EMOJI_KEYWORD_INDEX[pref])
-    return list(candidates)
 
 # ---------------------------
 # Lazy loader
 # ---------------------------
 def ensure_models_loaded(device_override: Optional[str] = None):
-    global _f_model, _f_clf, _f_scaler, _FORMAL_EMOTES, _INFORMAL_EMOTES, _EMOJI_KEYWORD_INDEX, _MODELS_LOADED, _SELECTED_DEVICE
+    global _f_model, _f_clf, _f_scaler, _FORMAL_EMOTES, _INFORMAL_EMOTES, _MODELS_LOADED, _SELECTED_DEVICE
     if _MODELS_LOADED:
         return
     # prefer mps if available, else cpu; allow override
@@ -112,14 +76,10 @@ def ensure_models_loaded(device_override: Optional[str] = None):
         _f_model = SentenceTransformer(str(FORMALITY_DIR / "embed_model"), device=device)
         _f_clf = joblib.load(FORMALITY_DIR / "classifier.joblib")
         _f_scaler = joblib.load(FORMALITY_DIR / "scaler.joblib")
-        # load cached/dynamically extracted emojis (uses emoji module)
+        # load cached/dynamically extracted emojis (uses emoji_insertion)
         form_emotes, inf_emotes = load_or_extract_emojis(top_n=50)
         _FORMAL_EMOTES = list(form_emotes or [])
         _INFORMAL_EMOTES = list(inf_emotes or [])
-        # build index from combined dynamic list and expand with all known emoji names
-        combined = list(dict.fromkeys(_FORMAL_EMOTES + _INFORMAL_EMOTES))
-        _EMOJI_KEYWORD_INDEX = _build_keyword_index(combined)
-        _expand_index_with_all_emojis(_EMOJI_KEYWORD_INDEX)
         # safe fallback if lists empty
         if not _FORMAL_EMOTES:
             _FORMAL_EMOTES = ['📘', '📖', '✒️', '📚']
@@ -140,9 +100,6 @@ def ensure_models_loaded(device_override: Optional[str] = None):
                 form_emotes, inf_emotes = load_or_extract_emojis(top_n=50)
                 _FORMAL_EMOTES = list(form_emotes or ['📘', '📖', '✒️', '📚'])
                 _INFORMAL_EMOTES = list(inf_emotes or ['🙂', '👍', '😊', '🤔', '☕', '🐱'])
-                combined = list(dict.fromkeys(_FORMAL_EMOTES + _INFORMAL_EMOTES))
-                _EMOJI_KEYWORD_INDEX = _build_keyword_index(combined)
-                _expand_index_with_all_emojis(_EMOJI_KEYWORD_INDEX)
                 _MODELS_LOADED = True
                 print("✓ Models and emojis loaded on cpu.")
             except Exception as e2:
@@ -200,67 +157,87 @@ def generate_candidates(text: str, register: str, n=20) -> List[str]:
     text_clean = text.replace('\u200b', '')
     text_clean = strip_emojis(text_clean)
     tokens = re.findall(r"\S+", text_clean)
-    # dynamic fallback pool
+
+    # emoji pool
     default_pool = _FORMAL_EMOTES if register == 'formal' else _INFORMAL_EMOTES
     if not default_pool:
         default_pool = list(emoji.EMOJI_DATA.keys())[:40]
 
-    num_force_emoji = max(1, int(n * 0.35))
-    base_insert_prob = 0.38
+    # 🔧 REDUCED EMOJI SETTINGS
+    num_force_emoji = max(1, int(n * 0.10))   # was 0.25 → now 10%
+    base_insert_prob = 0.12                   # was 0.28 → lower
 
     for i in range(n):
         new_tokens = []
+        emoji_added = False  # track per sentence
+
         for word in tokens:
             p = random.random()
+
             if p < 0.33:
                 mode = random.choice(['h', 'd'])
                 new_word = apply_homoglyph(word, rate=0.45) if mode == 'h' else apply_diacritic(word, rate=0.45)
                 new_tokens.append(new_word)
+
             elif p < 0.50:
-                # contextual emoji adjacent to token if mapping exists
-                matches = find_emojis_for_token(word)
                 new_tokens.append(word)
-                if matches and random.random() < 0.75:
-                    new_tokens.append(random.choice(matches))
+
+                # 🔧 MUCH LOWER emoji probability
+                if not emoji_added:
+                    matches = find_emojis_for_token(word)
+                    if matches and random.random() < 0.25:  # was 0.75
+                        new_tokens.append(random.choice(matches))
+                        emoji_added = True
             else:
                 new_tokens.append(word)
 
-        # Ensure some candidates include 1-3 emojis
-        if i < num_force_emoji:
-            n_em = random.randint(1, min(3, max(1, len(tokens) // 6 + 1)))
-            for _ in range(n_em):
-                if tokens:
-                    tok = random.choice(tokens)
-                    m = find_emojis_for_token(tok)
-                    em = random.choice(m) if m else random.choice(default_pool)
-                else:
-                    em = random.choice(default_pool)
+        # 🔧 FORCE AT MOST 1 emoji (not 1–3)
+        if i < num_force_emoji and not emoji_added:
+            if tokens:
+                tok = random.choice(tokens)
+                m = find_emojis_for_token(tok)
+                em = random.choice(m) if m else random.choice(default_pool)
+            else:
+                em = random.choice(default_pool)
+
+            idx = random.randint(0, max(0, len(new_tokens)))
+            new_tokens.insert(idx, em)
+            emoji_added = True
+
+        else:
+            # 🔧 rare random insertion
+            if not emoji_added and random.random() < base_insert_prob:
+                em = random.choice(default_pool)
                 idx = random.randint(0, max(0, len(new_tokens)))
                 new_tokens.insert(idx, em)
-        else:
-            # sparse random contextual insertions
-            for pos in range(len(new_tokens)):
-                if random.random() < base_insert_prob * 0.12:
-                    nearby = new_tokens[pos] if pos < len(tokens) else None
-                    if nearby:
-                        m = find_emojis_for_token(nearby)
-                        em = random.choice(m) if m else random.choice(default_pool)
-                    else:
-                        em = random.choice(default_pool)
-                    new_tokens.insert(pos, em)
-            if random.random() < base_insert_prob:
-                idx = random.randint(0, max(0, len(new_tokens)))
-                new_tokens.insert(idx, random.choice(default_pool))
+                emoji_added = True
 
         cand_text = ' '.join(new_tokens)
+
         if random.random() < 0.30:
             cand_text = apply_invisible_perturbation(cand_text)
-        # guarantee at least one emoji in candidate
-        if not any(ch in emoji.EMOJI_DATA for ch in cand_text):
-            cand_text = cand_text + " " + random.choice(default_pool)
-        candidates.add(cand_text)
-    return list(candidates)
 
+        # 🔧 guarantee at most ONE emoji
+        emoji_count = sum(1 for ch in cand_text if ch in emoji.EMOJI_DATA)
+        if emoji_count == 0:
+            if random.random() < 0.5:  # not always forced
+                cand_text += " " + random.choice(default_pool)
+        elif emoji_count > 1:
+            # keep only first emoji
+            seen = False
+            filtered = []
+            for ch in cand_text:
+                if ch in emoji.EMOJI_DATA:
+                    if not seen:
+                        filtered.append(ch)
+                        seen = True
+                else:
+                    filtered.append(ch)
+            cand_text = "".join(filtered)
+
+        candidates.add(cand_text)
+
+    return list(candidates)
 # ---------------------------
 # Humanize (used by CLI and other callers)
 # ---------------------------
@@ -534,7 +511,7 @@ def main():
     parser.add_argument("--text-col", type=str, nargs='*', default=None, help="Preferred text column names for CSVs (checked in order).")
     parser.add_argument("--attack-type", type=str, default="char", help="Attack type label for CSV.")
     parser.add_argument("--model", type=str, default="all-mpnet-base-v2", help="Generator model label for CSV.")
-    parser.add_argument("-o", "--output", type=str, default=str(Path.home() / "Downloads" / "teammate_pairs_template.csv"), help="Output CSV path (default: ~/Downloads/teammate_pairs_template.csv).")
+    parser.add_argument("-o", "--output", type=str, default=str(Path.home() / "Downloads" / "teammate_pairs_template_3000.csv"), help="Output CSV path (default: ~/Downloads/teammate_pairs_template.csv).")
     parser.add_argument("--device", type=str, choices=["cpu","mps"], default="mps", help="Force device for model loading (default: mps).")
     parser.add_argument("--iterations", type=int, default=3, help="Humanizer iterations per example.")
     parser.add_argument("--cands", type=int, default=15, help="Candidates per iteration.")
