@@ -1,0 +1,68 @@
+Technical Proposal: Enhancing the HMGC Framework via Span-Level Rewriting and Modern Semantic Constraints
+1. Executive Summary
+This project aims to build upon the Humanizing Machine-Generated Content (HMGC) framework, an adversarial attack designed to evade AI-text detectors. While the original HMGC framework successfully demonstrates the vulnerability of text detectors through heuristic word-level perturbations, it suffers from two key limitations: it relies on outdated semantic constraints that fail to capture subtle meaning shifts , and its word-level synonym swapping often compromises the natural fluency of the text .
++3
+
+This proposal outlines a phased approach to upgrade the HMGC pipeline. By integrating modern cross-encoders and transitioning to span-level syntactic rewriting, we will develop a system that bypasses detectors through structural changes rather than mere vocabulary swaps, fulfilling a direct need identified in the original research.
+
+2. Phase 1: Modernizing Semantic Constraints (The Foundation)
+Objective: Replace the legacy Universal Sentence Encoder (USE) with state-of-the-art semantic evaluation to ensure adversarial perturbations strictly preserve the original text's meaning.
+
+
+Problem Statement: The original HMGC framework uses USE to calculate the distance between the original text and the adversarial text . However, USE often misses subtle shifts in tone, logic, or sentiment, leading to adversarial examples that successfully evade detection but fail human readability or factual consistency standards.
+
+Methodology:
+
+Deprecation: Remove the existing USE constraint module from the HMGC pipeline.
+
+Integration: Implement a modern Hugging Face Cross-Encoder (e.g., cross-encoder/stsb-roberta-large) or an "LLM-as-a-Judge" prompting module (e.g., via a lightweight local model) to serve as the new semantic gatekeeper.
+
+Threshold Tuning: Calibrate the new similarity threshold to match the original paper's minimum tolerance while strictly enforcing higher fidelity.
+
+Deliverables:
+
+An upgraded "HMGC-V1.5" baseline.
+
+Evaluation metrics demonstrating that while the evasion rate remains comparable to the original HMGC, the semantic preservation scores (and human-evaluated coherence) are significantly improved.
+
+3. Phase 2: Span-Level Masking and Rewriting (The Core Novelty)
+Objective: Shift the attack paradigm from word-level synonym replacement to span-level structural rewriting, effectively neutralizing detectors that rely on syntactic patterns.
+
+Problem Statement:
+HMGC currently treats individual tokens as the smallest attack unit, masking single words and substituting them using a Masked Language Model (MLM) like BERT . This approach limits the attack to vocabulary changes, which can read unnaturally and are easier for robust detectors to catch.
++1
+
+Methodology:
+
+
+n-gram Importance Ranking: Modify the dual-aspect word importance ranking (Gradient + Perplexity)  to calculate the vulnerability of multi-word spans or entire clauses (e.g., 3-6 words).
+
+Generative Substitution: Replace the MLM with a Sequence-to-Sequence (Seq2Seq) model or a modern instruction-tuned LLM (e.g., LLaMA-3 8B, Mistral, or BART).
+
+Structural Prompting/Decoding: Instruct the generation model to rewrite the masked span cohesively with the surrounding context, allowing for structural shifts (e.g., passive to active voice, clause reordering) rather than direct 1:1 word swaps.
+
+Deliverables:
+
+The completed "HMGC-V2" framework.
+
+Benchmarking against the original HMGC on standard datasets (e.g., HC3, CheckGPT) , demonstrating superior text fluency (Perplexity/GRUEN scores) alongside state-of-the-art evasion rates.
+
+4. Phase 3: Global Optimization via Advanced Search (Future Work)
+Note: This phase represents a stretch goal to be pursued only after the successful validation of Phase 1 and Phase 2.
+
+Objective: Replace the framework's greedy search heuristic with an advanced, globally aware search algorithm to find the optimal combination of text perturbations.
+
+Problem Statement:
+The current HMGC algorithm evaluates candidates sequentially and permanently adopts the first replacement that lowers the detector's score (greedy search) . This sequential locking prevents the system from finding the best possible combination of edits across the entire document.
+
+Methodology:
+
+Reward Function Formulation: Develop a multi-objective reward function that balances the detector evasion probability, language perplexity, and semantic similarity score.
+
+Search Implementation: Introduce a Reinforcement Learning (RL) agent (e.g., PPO) or a Monte Carlo Tree Search (MCTS) algorithm to explore the perturbation space holistically. The agent will test multiple branching paths of span-replacements before selecting the final adversarial document.
+
+Deliverables:
+
+A fully autonomous, non-greedy adversarial attack agent.
+
+An analysis of the trade-off between the computational overhead of advanced search algorithms versus the marginal gains in evasion and text quality.
