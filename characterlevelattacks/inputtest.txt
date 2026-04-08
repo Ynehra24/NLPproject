@@ -1,0 +1,11 @@
+A condensing boiler is a type of heating system that is more efficient than a traditional boiler. It works by capturing the heat that is normally lost through the flue (exhaust pipe) of a traditional boiler and using it to heat water, which is then used to heat your home.
+
+To understand how a condensing boiler works, it helps to know a little bit about how a traditional boiler works. In a traditional boiler, a fuel (like natural gas or oil) is burned to heat water. The heated water is then sent through pipes to radiators or baseboard heaters, which use the heat to warm the air in your home.
+
+The problem with traditional boilers is that when the fuel is burned, not all of the heat is used to heat the water. Some of the heat is lost through the flue, which is why traditional boilers are not very efficient.
+
+A condensing boiler, on the other hand, is designed to capture as much of this wasted heat as possible. It does this by using a special type of heat exchanger that is made of metal with a high heat conductivity (like aluminum or stainless steel). This heat exchanger is located inside the flue, and it captures the heat that would normally be lost and uses it to heat the water.
+
+The temperature at which a condensing boiler works most efficiently is called the "saturation level." This is the temperature at which the water vapor in the flue gas condenses and turns into a liquid. When this happens, the heat that was previously lost through the flue is captured and used to heat the water, making the boiler more efficient.
+
+In summary, a condensing boiler is a type of heating system that is more efficient than a traditional boiler because it captures the heat that would normally be lost and uses it to heat the water. It works best at a certain temperature called the saturation level, which is the temperature at which the water vapor in the flue gas condenses and turns into a liquid.

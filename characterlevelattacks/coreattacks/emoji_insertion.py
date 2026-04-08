@@ -1,3 +1,4 @@
+# python
 import sys
 import re
 import json
@@ -33,68 +34,123 @@ OUTPUT_DIR    = Path("/Users/yatharthnehva/NLPproject/characterlevelattacks/core
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------
-# Dynamic Emoji Extractor (No Hardcoding)
+# Cache path
 # ---------------------------
 EMOJI_CACHE_PATH = FORMALITY_DIR / "extracted_emojis.json"
 
-def scan_file_for_emojis(filepath: Path, emoji_counts: Counter):
-    """Safely scans a file for emojis without loading entire datasets into memory where possible."""
-    if filepath.suffix.lower() in ['.pdf', '.png', '.jpg', '.zip', '.tar']:
-        return
-
-    print(f"  Scanning {filepath.name}...")
+# ---------------------------
+# Emoji extraction via emoji module (no dataset scans)
+# ---------------------------
+def _demojize_name(e: str) -> str:
     try:
-        if filepath.suffix == '.parquet':
-            df = pd.read_parquet(filepath)
-            for col in df.select_dtypes(include=['object', 'string', 'category']).columns:
-                for text in df[col].dropna().astype(str):
-                    emoji_counts.update([res['emoji'] for res in emoji.emoji_list(text)])
-        else:
-            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
-                for line in f:
-                    emoji_counts.update([res['emoji'] for res in emoji.emoji_list(line)])
-    except Exception as e:
-        print(f"  [!] Failed to scan {filepath.name}: {e}")
+        name = emoji.demojize(e)  # e.g. ":grinning_face:"
+        name = name.strip(':').replace('_', ' ').lower()
+        return name
+    except Exception:
+        return ""
+
+def _uniq(seq):
+    seen = set()
+    out = []
+    for x in seq:
+        if x not in seen:
+            seen.add(x)
+            out.append(x)
+    return out
 
 def load_or_extract_emojis(top_n: int = 15):
-    """Loads emojis from cache, or scans datasets to extract them dynamically."""
+    """
+    Build formal/informal emoji lists using the emoji module only.
+    Caches to EMOJI_CACHE_PATH. Does not scan datasets.
+    """
+    # Try cache first
     if EMOJI_CACHE_PATH.exists():
-        print(f"Loading dynamic emoji sets from cache: {EMOJI_CACHE_PATH.name}")
-        with open(EMOJI_CACHE_PATH, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            return data['formal'], data['informal']
-            
-    print("Caching top emojis dynamically from datasets (this runs once)...")
-    
-    # 1. Load formal emojis
-    print("Scanning formal dataset...")
-    formal_counts = Counter()
-    scan_file_for_emojis(FORMAL_PATH, formal_counts)
-    formal_emojis = [e for e, c in formal_counts.most_common(top_n)]
-    
-    # 2. Load informal emojis (Scan the entire emojibased folder)
-    print("\nScanning all emojibased datasets...")
-    informal_counts = Counter()
-    emojibased_dir = Path("/Users/yatharthnehva/NLPproject/characterlevelattacks/emojibased")
-    target_files = [f for f in emojibased_dir.rglob("*") if f.is_file() and not f.name.startswith('.')]
-    
-    for fpath in target_files:
-        scan_file_for_emojis(fpath, informal_counts)
-        
-    informal_emojis = [e for e, c in informal_counts.most_common(top_n)]
-    
-    # Optional fallback if formal dataset literally has 0 emojis
-    if not formal_emojis:
-        formal_emojis = [" ", ".", ","] # fallback to benign chars
-        
-    # Save to Cache
-    data = {'formal': formal_emojis, 'informal': informal_emojis}
-    with open(EMOJI_CACHE_PATH, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-        
-    print(f"Formal Top Emojis: {formal_emojis[:5]}...")
-    print(f"Informal Top Emojis: {informal_emojis[:5]}...")
-    return formal_emojis, informal_emojis
+        try:
+            with open(EMOJI_CACHE_PATH, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                formal = data.get('formal', [])
+                informal = data.get('informal', [])
+                # ensure lists are sane
+                if isinstance(formal, list) and isinstance(informal, list) and (formal or informal):
+                    return formal[:top_n], informal[:top_n]
+        except Exception:
+            pass
+
+    print("Extracting emoji sets using emoji module (no dataset scans)...")
+
+    # Heuristic keyword buckets
+    formal_keywords = {
+        "book","scroll","pen","pencil","memo","page","notebook","briefcase","file",
+        "document","bookmark","calendar","date","envelope","email","letter","certificate",
+        "clipboard","ledger","balance","scale","file folder","office","fountain pen","paper"
+    }
+    informal_keywords = {
+        "face","smile","laugh","grin","cry","tear","angry","rage","heart","thumb","clap",
+        "fire","star","coffee","cat","dog","party","sunglasses","wink","eyes","kiss","wave",
+        "ok hand","pray","muscle","rocket","pizza","cake","beer","yum","cool","tongue","zany"
+    }
+
+    formal = []
+    informal = []
+    other = []
+
+    # iterate over the emoji.EMOJI_DATA keys to get emojis
+    for em in emoji.EMOJI_DATA.keys():
+        name = _demojize_name(em)
+        if not name:
+            other.append((em, name))
+            continue
+
+        # match heuristics
+        matched_formal = any(k in name for k in formal_keywords)
+        matched_informal = any(k in name for k in informal_keywords)
+
+        if matched_formal and not matched_informal:
+            formal.append(em)
+        elif matched_informal and not matched_formal:
+            informal.append(em)
+        else:
+            # consider faces and common informal icons as informal by default
+            if "face" in name or "smile" in name or "heart" in name or "thumb" in name:
+                informal.append(em)
+            else:
+                other.append((em, name))
+
+    formal = _uniq(formal)
+    informal = _uniq(informal)
+
+    # fill from 'other' using name heuristics to reach top_n
+    if len(formal) < top_n or len(informal) < top_n:
+        for em, name in other:
+            if len(formal) < top_n and any(k in name for k in ("book","pen","page","document","notebook","scroll","file","envelope")):
+                formal.append(em)
+            elif len(informal) < top_n and any(k in name for k in ("face","smile","heart","thumb","coffee","cat","dog","party","pizza","beer","rocket")):
+                informal.append(em)
+            if len(formal) >= top_n and len(informal) >= top_n:
+                break
+
+    # final fill with remaining other emojis if still short
+    if len(formal) < top_n or len(informal) < top_n:
+        others_flat = [e for (e, _) in other]
+        idx = 0
+        while len(formal) < top_n and idx < len(others_flat):
+            formal.append(others_flat[idx]); idx += 1
+        while len(informal) < top_n and idx < len(others_flat):
+            informal.append(others_flat[idx]); idx += 1
+
+    formal = formal[:top_n]
+    informal = informal[:top_n]
+
+    # Save to cache
+    try:
+        EMOJI_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(EMOJI_CACHE_PATH, 'w', encoding='utf-8') as f:
+            json.dump({'formal': formal, 'informal': informal}, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+    print(f"Extracted {len(formal)} formal / {len(informal)} informal emojis.")
+    return formal, informal
 
 # Load them into global variables for the candidate generator
 FORMAL_EMOTES, INFORMAL_EMOTES = load_or_extract_emojis(top_n=15)
@@ -174,7 +230,7 @@ def generate_emoji_candidates(text: str, register: str, n_candidates: int = 10) 
     candidates = set()
     allowed_emojis = get_allowed_emojis(register)
     
-    # If the dataset literally had 0 emojis, fallback to just returning the text
+    # If the emoji module couldn't provide emojis, fallback to text only
     if not allowed_emojis: 
         return [text]
         
