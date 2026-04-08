@@ -1,4 +1,3 @@
-# ...existing code...
 # python
 import sys
 import re
@@ -26,7 +25,7 @@ from composite_scorer import composite_score
 from homoglyph_attack import apply_homoglyph, apply_diacritic
 
 # dynamic emoji loader (uses emoji module and caches)
-from emoji_insertion import load_or_extract_emojis, find_emojis_for_token, get_allowed_emojis
+from emoji_insertion import load_or_extract_emojis
 
 random.seed(42)
 np.random.seed(42)
@@ -47,15 +46,52 @@ _MODELS_LOADED = False
 _SELECTED_DEVICE: Optional[str] = None
 
 # ---------------------------
-# (local demojize/index helpers removed)
-# Using semantic search from emoji_insertion for token->emoji mapping
+# Emoji index helpers (dynamic usage)
 # ---------------------------
+def _demojize_words(e: str) -> List[str]:
+    try:
+        name = emoji.demojize(e)  # e.g. ":grinning_face:"
+        name = name.strip(":").replace("_", " ").lower()
+        return re.findall(r"[a-z0-9]+", name)
+    except Exception:
+        return []
+
+def _build_keyword_index(emoji_list: List[str]) -> Dict[str, Set[str]]:
+    idx: Dict[str, Set[str]] = {}
+    for em in emoji_list:
+        for w in _demojize_words(em):
+            idx.setdefault(w, set()).add(em)
+    return idx
+
+def _expand_index_with_all_emojis(idx: Dict[str, Set[str]]):
+    for em in emoji.EMOJI_DATA.keys():
+        for w in _demojize_words(em):
+            idx.setdefault(w, set()).add(em)
+
+def find_emojis_for_token(token: str) -> List[str]:
+    t = token.lower().strip(".,!?;:\"'()[]{}")
+    if not t:
+        return []
+    candidates = set()
+    # exact token
+    if t in _EMOJI_KEYWORD_INDEX:
+        candidates.update(_EMOJI_KEYWORD_INDEX[t])
+    # substring/key match
+    for k in list(_EMOJI_KEYWORD_INDEX.keys()):
+        if k in t or t in k:
+            candidates.update(_EMOJI_KEYWORD_INDEX[k])
+    # prefix attempts
+    for i in range(1, min(6, len(t) + 1)):
+        pref = t[:i]
+        if pref in _EMOJI_KEYWORD_INDEX:
+            candidates.update(_EMOJI_KEYWORD_INDEX[pref])
+    return list(candidates)
 
 # ---------------------------
 # Lazy loader
 # ---------------------------
 def ensure_models_loaded(device_override: Optional[str] = None):
-    global _f_model, _f_clf, _f_scaler, _FORMAL_EMOTES, _INFORMAL_EMOTES, _MODELS_LOADED, _SELECTED_DEVICE
+    global _f_model, _f_clf, _f_scaler, _FORMAL_EMOTES, _INFORMAL_EMOTES, _EMOJI_KEYWORD_INDEX, _MODELS_LOADED, _SELECTED_DEVICE
     if _MODELS_LOADED:
         return
     # prefer mps if available, else cpu; allow override
@@ -76,10 +112,14 @@ def ensure_models_loaded(device_override: Optional[str] = None):
         _f_model = SentenceTransformer(str(FORMALITY_DIR / "embed_model"), device=device)
         _f_clf = joblib.load(FORMALITY_DIR / "classifier.joblib")
         _f_scaler = joblib.load(FORMALITY_DIR / "scaler.joblib")
-        # load cached/dynamically extracted emojis (uses emoji_insertion)
+        # load cached/dynamically extracted emojis (uses emoji module)
         form_emotes, inf_emotes = load_or_extract_emojis(top_n=50)
         _FORMAL_EMOTES = list(form_emotes or [])
         _INFORMAL_EMOTES = list(inf_emotes or [])
+        # build index from combined dynamic list and expand with all known emoji names
+        combined = list(dict.fromkeys(_FORMAL_EMOTES + _INFORMAL_EMOTES))
+        _EMOJI_KEYWORD_INDEX = _build_keyword_index(combined)
+        _expand_index_with_all_emojis(_EMOJI_KEYWORD_INDEX)
         # safe fallback if lists empty
         if not _FORMAL_EMOTES:
             _FORMAL_EMOTES = ['📘', '📖', '✒️', '📚']
@@ -100,6 +140,9 @@ def ensure_models_loaded(device_override: Optional[str] = None):
                 form_emotes, inf_emotes = load_or_extract_emojis(top_n=50)
                 _FORMAL_EMOTES = list(form_emotes or ['📘', '📖', '✒️', '📚'])
                 _INFORMAL_EMOTES = list(inf_emotes or ['🙂', '👍', '😊', '🤔', '☕', '🐱'])
+                combined = list(dict.fromkeys(_FORMAL_EMOTES + _INFORMAL_EMOTES))
+                _EMOJI_KEYWORD_INDEX = _build_keyword_index(combined)
+                _expand_index_with_all_emojis(_EMOJI_KEYWORD_INDEX)
                 _MODELS_LOADED = True
                 print("✓ Models and emojis loaded on cpu.")
             except Exception as e2:
@@ -152,92 +195,81 @@ def readability_score(text: str) -> float:
 # Candidate generation (dynamic emoji usage)
 # ---------------------------
 def generate_candidates(text: str, register: str, n=20) -> List[str]:
+    """
+    Produce n candidate perturbations of `text`.
+    - Lower emoji frequency.
+    - Always insert emojis as separate tokens (never injected into a word).
+    """
     ensure_models_loaded()
     candidates = set()
     text_clean = text.replace('\u200b', '')
     text_clean = strip_emojis(text_clean)
     tokens = re.findall(r"\S+", text_clean)
-
-    # emoji pool
+    # dynamic fallback pool
     default_pool = _FORMAL_EMOTES if register == 'formal' else _INFORMAL_EMOTES
     if not default_pool:
         default_pool = list(emoji.EMOJI_DATA.keys())[:40]
 
-    # 🔧 REDUCED EMOJI SETTINGS
-    num_force_emoji = max(1, int(n * 0.10))   # was 0.25 → now 10%
-    base_insert_prob = 0.12                   # was 0.28 → lower
+    # lower emoji density
+    num_force_emoji = max(1, int(n * 0.20))   # reduced from ~35%
+    base_insert_prob = 0.20                   # reduced from ~0.38
 
     for i in range(n):
-        new_tokens = []
-        emoji_added = False  # track per sentence
-
+        new_tokens: List[str] = []
         for word in tokens:
             p = random.random()
-
             if p < 0.33:
                 mode = random.choice(['h', 'd'])
                 new_word = apply_homoglyph(word, rate=0.45) if mode == 'h' else apply_diacritic(word, rate=0.45)
                 new_tokens.append(new_word)
-
             elif p < 0.50:
+                # contextual emoji adjacent to token if mapping exists — append as separate token
+                matches = find_emojis_for_token(word)
                 new_tokens.append(word)
-
-                # 🔧 MUCH LOWER emoji probability
-                if not emoji_added:
-                    matches = find_emojis_for_token(word)
-                    if matches and random.random() < 0.25:  # was 0.75
-                        new_tokens.append(random.choice(matches))
-                        emoji_added = True
+                if matches and random.random() < 0.60:
+                    new_tokens.append(random.choice(matches))
             else:
                 new_tokens.append(word)
 
-        # 🔧 FORCE AT MOST 1 emoji (not 1–3)
-        if i < num_force_emoji and not emoji_added:
-            if tokens:
-                tok = random.choice(tokens)
-                m = find_emojis_for_token(tok)
-                em = random.choice(m) if m else random.choice(default_pool)
-            else:
-                em = random.choice(default_pool)
-
-            idx = random.randint(0, max(0, len(new_tokens)))
-            new_tokens.insert(idx, em)
-            emoji_added = True
-
-        else:
-            # 🔧 rare random insertion
-            if not emoji_added and random.random() < base_insert_prob:
-                em = random.choice(default_pool)
-                idx = random.randint(0, max(0, len(new_tokens)))
+        # Ensure some candidates include 1-2 emojis (inserted as separate tokens)
+        if i < num_force_emoji:
+            n_em = random.randint(1, min(2, max(1, len(tokens) // 8 + 1)))
+            for _ in range(n_em):
+                if tokens:
+                    tok = random.choice(tokens)
+                    m = find_emojis_for_token(tok)
+                    em = random.choice(m) if m else random.choice(default_pool)
+                else:
+                    em = random.choice(default_pool)
+                # insert emoji as its own token (between tokens)
+                idx = random.randint(0, len(new_tokens))
                 new_tokens.insert(idx, em)
-                emoji_added = True
+        else:
+            # sparse random contextual insertions (only between tokens)
+            pos = 0
+            while pos < len(new_tokens):
+                if random.random() < base_insert_prob * 0.08:
+                    nearby = new_tokens[pos]
+                    m = find_emojis_for_token(nearby) if nearby else None
+                    em = random.choice(m) if (m and random.random() < 0.7) else random.choice(default_pool)
+                    new_tokens.insert(pos, em)
+                    pos += 1  # skip inserted emoji
+                pos += 1
+            # occasional global emoji token
+            if random.random() < (base_insert_prob * 0.6):
+                idx = random.randint(0, len(new_tokens))
+                new_tokens.insert(idx, random.choice(default_pool))
 
         cand_text = ' '.join(new_tokens)
-
-        if random.random() < 0.30:
+        # apply invisible perturbation separately — does not insert emojis
+        if random.random() < 0.25:
             cand_text = apply_invisible_perturbation(cand_text)
-
-        # 🔧 guarantee at most ONE emoji
-        emoji_count = sum(1 for ch in cand_text if ch in emoji.EMOJI_DATA)
-        if emoji_count == 0:
-            if random.random() < 0.5:  # not always forced
-                cand_text += " " + random.choice(default_pool)
-        elif emoji_count > 1:
-            # keep only first emoji
-            seen = False
-            filtered = []
-            for ch in cand_text:
-                if ch in emoji.EMOJI_DATA:
-                    if not seen:
-                        filtered.append(ch)
-                        seen = True
-                else:
-                    filtered.append(ch)
-            cand_text = "".join(filtered)
-
-        candidates.add(cand_text)
-
+        # guarantee at least one emoji in candidate; add as separate token
+        if not any(ch in emoji.EMOJI_DATA for ch in cand_text):
+            cand_text = cand_text + " " + random.choice(default_pool)
+        candidates.add(cand_text.strip())
     return list(candidates)
+
 # ---------------------------
 # Humanize (used by CLI and other callers)
 # ---------------------------
@@ -500,22 +532,20 @@ def sample_from_datasets(hc3_path: Optional[str], m4_path: Optional[str], total_
 # ---------------------------
 # CLI
 # ---------------------------
-# ...existing code...
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Humanize AI text or dataset (character-level attacks with emojis/ZWSP).")
     parser.add_argument("text", type=str, nargs='?', default=None, help="Text to humanize, or path to file (CSV/TSV/parquet/arrow/feather/txt).")
     parser.add_argument("--hc3", type=str, default=None, help="Path to HC3 dataset (CSV/TSV/parquet/arrow/feather or txt).")
     parser.add_argument("--m4", type=str, default=None, help="Path to M4 dataset (CSV/TSV/parquet/arrow/feather or txt).")
-    parser.add_argument("--sample-size", type=int, default=10, help="Total samples to draw across HC3+M4 (default: 10).")
+    parser.add_argument("--sample-size", type=int, default=1, help="Total samples to draw across HC3+M4 (default: 10).")
     parser.add_argument("--text-col", type=str, nargs='*', default=None, help="Preferred text column names for CSVs (checked in order).")
     parser.add_argument("--attack-type", type=str, default="char", help="Attack type label for CSV.")
     parser.add_argument("--model", type=str, default="all-mpnet-base-v2", help="Generator model label for CSV.")
-    parser.add_argument("-o", "--output", type=str, default=str(Path.home() / "Downloads" / "teammate_pairs_template_3000.csv"), help="Output CSV path (default: ~/Downloads/teammate_pairs_template.csv).")
+    parser.add_argument("-o", "--output", type=str, default=str(Path.home() / "Downloads" / "teammate_pairs_template.csv"), help="Output CSV path (default: ~/Downloads/teammate_pairs_template.csv).")
     parser.add_argument("--device", type=str, choices=["cpu","mps"], default="mps", help="Force device for model loading (default: mps).")
     parser.add_argument("--iterations", type=int, default=3, help="Humanizer iterations per example.")
     parser.add_argument("--cands", type=int, default=15, help="Candidates per iteration.")
-    parser.add_argument("--text-file", type=str, default=None, help="Path to a plain text file to use as a single input (use '-' for stdin).")
     args = parser.parse_args()
 
     out_path = Path(args.output)
@@ -525,31 +555,12 @@ def main():
 
     examples: List[Tuple[str, str]] = []
 
-    # 1) Prefer explicit text-file (safe for long / quoted content)
-    if args.text_file:
-        tf = args.text_file
-        if tf == "-":
-            content = sys.stdin.read()
-        else:
-            tfp = Path(tf)
-            if not tfp.exists():
-                parser.error(f"text-file not found: {tf}")
-            with open(tfp, "r", encoding="utf-8", errors="replace") as fh:
-                content = fh.read()
-        content = content.strip()
-        if not content:
-            parser.error("text-file is empty")
-        # treat whole content as one example
-        examples.append(("p001", content))
-
-    # 2) Datasets (hc3/m4)
-    elif args.hc3 or args.m4:
+    if args.hc3 or args.m4:
         texts = sample_from_datasets(args.hc3, args.m4, args.sample_size, args.text_col)
         for i, t in enumerate(texts, start=1):
             pid = f"p{i:03d}"
             examples.append((pid, t))
 
-    # 3) Positional text argument or path
     elif args.text:
         input_arg = args.text
         input_path = Path(input_arg)
@@ -580,15 +591,13 @@ def main():
                 for i, ln in enumerate(lines, start=1):
                     examples.append((f"p{i:03d}", ln))
         elif "\n" in input_arg:
-            # multi-line positional string provided (rare)
             lines = [ln for ln in input_arg.splitlines() if ln.strip()]
             for i, ln in enumerate(lines, start=1):
                 examples.append((f"p{i:03d}", ln))
         else:
-            # single short positional text
             examples.append(("p001", input_arg))
     else:
-        parser.error("No input provided. supply --text-file, text, --hc3 or --m4")
+        parser.error("No input provided. supply text, --hc3 or --m4")
 
     rows = []
     for pid, txt in examples:
@@ -602,7 +611,6 @@ def main():
         writer.writerows(rows)
 
     print(f"\n✓ Wrote {len(rows)} pairs to {out_path}")
-# ...existing code...
 
 if __name__ == "__main__":
     main()
