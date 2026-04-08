@@ -34,9 +34,13 @@ def find_best_threshold(y_true: np.ndarray, y_score: np.ndarray) -> float:
 
 
 def tpr_at_fpr(y_true: np.ndarray, y_score: np.ndarray, target_fpr: float) -> float:
+    # Handle single-class data to prevent sklearn warnings
+    if len(np.unique(y_true)) < 2:
+        return np.nan
+
     fpr, tpr, _ = roc_curve(y_true, y_score)
     if len(fpr) == 0:
-        return 0.0
+        return np.nan
     idx = np.searchsorted(fpr, target_fpr, side="right") - 1
     idx = int(np.clip(idx, 0, len(tpr) - 1))
     return float(tpr[idx])
@@ -48,10 +52,12 @@ def compute_binary_metrics(y_true: np.ndarray, y_score: np.ndarray, threshold: O
 
     y_pred = (y_score >= threshold).astype(int)
 
+    has_both_classes = len(np.unique(y_true)) > 1
+
     out = {
         "threshold": float(threshold),
-        "auroc": float(roc_auc_score(y_true, y_score)) if len(np.unique(y_true)) > 1 else 0.0,
-        "auprc": float(average_precision_score(y_true, y_score)) if len(np.unique(y_true)) > 1 else 0.0,
+        "auroc": float(roc_auc_score(y_true, y_score)) if has_both_classes else np.nan,
+        "auprc": float(average_precision_score(y_true, y_score)) if has_both_classes else np.nan,
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "f1_ai": float(f1_score(y_true, y_pred, zero_division=0)),
     }
