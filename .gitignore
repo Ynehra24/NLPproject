@@ -46,3 +46,6 @@ characterlevelattacks/stylometric
 
 post_generation/data/
 *.safetensors
+
+# Teammate attack input files
+paired_long_*.csv
