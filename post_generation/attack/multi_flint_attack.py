@@ -62,7 +62,7 @@ def init(model_path, attacking_method="dualir", n_gpu=3):
     elif attacking_method == "no_pos":
         from attack.recipes.ablation_rsmu_mlm_dualir_no_pos import get_recipe
         recipe_func = get_recipe
-    elif attacking_method == "no_use":
+    elif attacking_method in {"no_use", "no_semantic"}:
         from attack.recipes.ablation_rspm_mlm_dualir_no_use import get_recipe
         recipe_func = get_recipe
     elif attacking_method == "no_max_perturbed":
@@ -144,6 +144,21 @@ def do_attack_one(ori_one):
 
 
 def main(args):
+    semantic_env_overrides = {
+        "HMGC_SEMANTIC_MODEL": args.semantic_model_name,
+        "HMGC_SEMANTIC_THRESHOLD": args.semantic_threshold,
+        "HMGC_SEMANTIC_WINDOW_SIZE": args.semantic_window_size,
+        "HMGC_SEMANTIC_BATCH_SIZE": args.semantic_batch_size,
+        "HMGC_SEMANTIC_MAX_LENGTH": args.semantic_max_length,
+        "HMGC_SEMANTIC_STSB_MAX_SCORE": args.semantic_stsb_max_score,
+        "HMGC_SEMANTIC_SKIP_SHORT": args.semantic_skip_short,
+        "HMGC_SEMANTIC_DEVICE": args.semantic_device,
+    }
+    for env_key, env_value in semantic_env_overrides.items():
+        if env_value is None:
+            continue
+        os.environ[env_key] = str(env_value)
+
     # prepare test data
     sample_list = list()
     with open(args.data_file, "r") as rf:
@@ -176,10 +191,23 @@ if __name__ == "__main__":
     parser.add_argument("--data_file", required=True, help="TextFlint test file path")
     parser.add_argument("--output_dir", required=True, help="Directory to save the attacked samples")
 
-    parser.add_argument("--attacking_method", type=str, default="dualir", help="Attacking method")
+    parser.add_argument(
+        "--attacking_method",
+        type=str,
+        default="dualir",
+        help="Attacking method: dualir|wir|greedy|no_pos|no_use(no_semantic)|no_max_perturbed",
+    )
     parser.add_argument("--num_gpu_per_process", type=int, default=3, help="Number of gpus of one process")
     parser.add_argument("--num_workers", type=int, default=2, help="Total gpu usage is num_workers * num_gpu_per_process")
     parser.add_argument("--text_key", type=str, default="text", help="Text key for json object")
     parser.add_argument("--label_key", type=str, default="label", help="Label key for json object")
+    parser.add_argument("--semantic_model_name", type=str, default=None, help="Cross-encoder model name")
+    parser.add_argument("--semantic_threshold", type=float, default=None, help="Semantic threshold in [0,1]")
+    parser.add_argument("--semantic_window_size", type=int, default=None, help="Window size around edited token")
+    parser.add_argument("--semantic_batch_size", type=int, default=None, help="Batch size for semantic scoring")
+    parser.add_argument("--semantic_max_length", type=int, default=None, help="Max token length for semantic scoring")
+    parser.add_argument("--semantic_stsb_max_score", type=float, default=None, help="Raw STS-B max score for normalization")
+    parser.add_argument("--semantic_skip_short", type=str, default=None, help="Skip scoring short texts: true/false")
+    parser.add_argument("--semantic_device", type=str, default=None, help="Device override for semantic model")
     args = parser.parse_args()
     main(args)
