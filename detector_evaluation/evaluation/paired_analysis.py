@@ -116,6 +116,9 @@ def main() -> None:
             print(f"Skipping {sf.name}: missing columns {missing_score}")
             continue
 
+        # Keep only required score columns to avoid merge suffix collisions
+        # with metadata columns like attack_type.
+        det_df = det_df[required_score_cols].copy()
         det_df["id"] = det_df["id"].astype(str)
         merged = det_df.merge(meta, on="id", how="inner")
         if merged.empty:

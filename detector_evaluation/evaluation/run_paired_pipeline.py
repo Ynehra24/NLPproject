@@ -1,19 +1,19 @@
 """Run the paired evaluation pipeline end-to-end.
 
-Pipeline steps:
-1) Merge teammate paired CSV files (or use an existing merged file)
-2) Convert paired format to long format
-3) Run attack evaluation (all detectors + aggregation + plots)
-4) Run paired analysis (score-drop + flip metrics)
-5) Run disagreement-aware ensemble novelty evaluation (when label coverage permits)
+Takes a teammate's paired CSV (original + humanized text) and runs:
+  1) Convert paired → long format
+  2) Run all 6 detectors
+  3) Aggregate metrics + evasion + transferability
+  4) Generate plots
+  5) Paired analysis (score-drop, flip rates)
+  6) Disagreement-aware ensemble (novelty)
 
-Example:
+Usage:
   python -m evaluation.run_paired_pipeline \
-    --pairs-dir data/teammate_pairs \
-    --output-dir results/attack_eval_paired \
+    --pairs-file teammate_pairs_charlevel.csv \
+    --output-dir results/attack_eval_charlevel \
     --model-dir results/roberta_model \
-    --device cpu \
-    --skip-report
+    --device cpu
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ import argparse
 import subprocess
 import sys
 from pathlib import Path
-from typing import Tuple
 
 import pandas as pd
 
@@ -32,102 +31,35 @@ def run_cmd(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True)
 
 
-def check_novelty_prereqs(scores_dir: Path) -> Tuple[bool, str]:
-    """Check whether disagreement ensemble can be trained on current scores.
-
-    Requires both human and ai labels in source column across score CSV files.
-    """
-    files = sorted(scores_dir.glob("*_scores.csv"))
-    if not files:
-        return False, f"No score files found in: {scores_dir}"
-
-    labels = set()
-    for file in files:
-        try:
-            df = pd.read_csv(file, usecols=["source"])
-        except Exception:
-            continue
-
-        vals = (
-            df["source"]
-            .dropna()
-            .astype(str)
-            .str.strip()
-            .str.lower()
-            .tolist()
-        )
-        labels.update(vals)
-
-    required = {"human", "ai"}
-    if required.issubset(labels):
-        return True, ""
-    return False, f"Need both source labels {sorted(required)} but found: {sorted(labels)}"
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run paired detector pipeline end-to-end")
 
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
-        "--pairs-dir",
-        help="Directory containing teammate paired CSV files",
-    )
-    group.add_argument(
-        "--pairs-file",
-        help="Single merged paired CSV file",
-    )
+    group.add_argument("--pairs-dir", help="Directory containing teammate paired CSV files")
+    group.add_argument("--pairs-file", help="Single paired CSV file")
 
-    parser.add_argument(
-        "--merged-output",
-        default=None,
-        help="Where to save merged paired CSV (used only with --pairs-dir)",
-    )
-    parser.add_argument(
-        "--long-output",
-        default=None,
-        help="Where to save long-format CSV (default derived from input)",
-    )
-
-    parser.add_argument("--output-dir", default="results/attack_eval_paired", help="Pipeline output directory")
+    parser.add_argument("--output-dir", required=True, help="Pipeline output directory")
     parser.add_argument("--model-dir", default="results/roberta_model", help="Fine-tuned RoBERTa model dir")
     parser.add_argument("--device", default="cpu", help="Device for detector scoring")
     parser.add_argument("--detectgpt-perturb", type=int, default=2, help="DetectGPT perturbations")
-    parser.add_argument("--api-key-env", default="GEMINI_API_KEY", help="Gemini API env variable name")
-    parser.add_argument("--skip-report", action="store_true", help="Skip Gemini report generation")
-    parser.add_argument("--skip-novelty", action="store_true", help="Skip disagreement-ensemble novelty evaluation")
-    parser.add_argument(
-        "--novelty-output-dir",
-        default=None,
-        help="Output dir for disagreement ensemble artifacts (default: <output-dir>/ensemble)",
-    )
+    parser.add_argument("--skip-ensemble", action="store_true", help="Skip disagreement-ensemble step")
     return parser.parse_args()
 
 
-def merge_pairs(pairs_dir: Path, merged_output: Path) -> Path:
-    if not pairs_dir.exists():
-        raise FileNotFoundError(f"Pairs directory not found: {pairs_dir}")
-
+def merge_pairs(pairs_dir: Path) -> Path:
+    """Merge all CSVs in a directory into one paired file."""
     files = sorted([p for p in pairs_dir.glob("*.csv") if p.is_file()])
     if not files:
         raise FileNotFoundError(f"No CSV files found in: {pairs_dir}")
 
-    parts = []
-    for f in files:
-        df = pd.read_csv(f)
-        if df.empty:
-            print(f"Warning: {f.name} is empty and will be skipped")
-            continue
-        parts.append(df)
-
+    parts = [pd.read_csv(f) for f in files if not pd.read_csv(f).empty]
     if not parts:
-        raise RuntimeError("All CSV files were empty; nothing to merge")
+        raise RuntimeError("All CSV files were empty")
 
     merged = pd.concat(parts, ignore_index=True, sort=False)
-    merged_output.parent.mkdir(parents=True, exist_ok=True)
+    merged_output = pairs_dir / "all_pairs.csv"
     merged.to_csv(merged_output, index=False)
-
-    print(f"Merged {len(parts)} files into: {merged_output}")
-    print(f"Merged rows: {len(merged)}")
+    print(f"Merged {len(parts)} files → {merged_output} ({len(merged)} rows)")
     return merged_output
 
 
@@ -137,114 +69,128 @@ def main() -> None:
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
+    scores_dir = output_dir / "scores"
 
+    # Resolve input file
     if args.pairs_file:
         paired_input = Path(args.pairs_file)
         if not paired_input.exists():
             raise FileNotFoundError(f"Pairs file not found: {paired_input}")
     else:
-        pairs_dir = Path(args.pairs_dir)
-        if args.merged_output:
-            merged_output = Path(args.merged_output)
-        else:
-            merged_output = pairs_dir / "all_pairs.csv"
-        paired_input = merge_pairs(pairs_dir, merged_output)
+        paired_input = merge_pairs(Path(args.pairs_dir))
 
-    if args.long_output:
-        long_output = Path(args.long_output)
+    # Check if already in long format
+    df_input = pd.read_csv(paired_input, nrows=1)
+    if "variant" in df_input.columns and "id" in df_input.columns:
+        long_output = paired_input
+        print("\n" + "=" * 60)
+        print("STEP 1: Input already in long format (skipping conversion)")
+        print("=" * 60)
     else:
         long_output = paired_input.with_name(f"{paired_input.stem}_long.csv")
+        # ── STEP 1: Convert paired → long ────────────────────────────
+        print("\n" + "=" * 60)
+        print("STEP 1: Convert paired → long format")
+        print("=" * 60)
+        run_cmd([
+            python, "-m", "evaluation.paired_to_long",
+            "--input", str(paired_input),
+            "--output", str(long_output),
+        ])
 
+    # ── STEP 2: Run all 6 detectors ──────────────────────────────
     print("\n" + "=" * 60)
-    print("STEP 1: Convert paired -> long")
+    print("STEP 2: Run all detectors")
     print("=" * 60)
-    run_cmd(
-        [
-            python,
-            "-m",
-            "evaluation.paired_to_long",
-            "--input",
-            str(paired_input),
-            "--output",
-            str(long_output),
-        ]
-    )
+    run_cmd([
+        python, "-m", "evaluation.run_all",
+        "--input", str(long_output),
+        "--output-dir", str(scores_dir),
+        "--device", args.device,
+        "--roberta-model-dir", str(args.model_dir),
+        "--run-detectgpt",
+        "--detectgpt-perturb", str(args.detectgpt_perturb),
+        "--run-fast-detectgpt",
+        "--run-binoculars",
+        "--run-watermark",
+    ])
 
+    # ── STEP 3: Aggregate metrics ────────────────────────────────
     print("\n" + "=" * 60)
-    print("STEP 2: Run detector evaluation")
+    print("STEP 3: Aggregate metrics")
     print("=" * 60)
-    eval_cmd = [
-        python,
-        "-m",
-        "evaluation.evaluate_attack",
-        "--input",
-        str(long_output),
-        "--output-dir",
-        str(output_dir),
-        "--model-dir",
-        str(args.model_dir),
-        "--device",
-        str(args.device),
-        "--detectgpt-perturb",
-        str(args.detectgpt_perturb),
-        "--api-key-env",
-        str(args.api_key_env),
-    ]
-    if args.skip_report:
-        eval_cmd.append("--skip-report")
-    run_cmd(eval_cmd)
+    run_cmd([
+        python, "-m", "evaluation.aggregate_results",
+        "--scores-dir", str(scores_dir),
+        "--output-dir", str(output_dir),
+    ])
 
+    # ── STEP 4: Generate plots ───────────────────────────────────
     print("\n" + "=" * 60)
-    print("STEP 3: Run paired analysis")
+    print("STEP 4: Generate plots")
     print("=" * 60)
-    paired_summary = output_dir / "paired_summary.csv"
-    run_cmd(
-        [
-            python,
-            "-m",
-            "evaluation.paired_analysis",
-            "--scores-dir",
-            str(output_dir / "scores"),
-            "--paired-long",
-            str(long_output),
-            "--output",
-            str(paired_summary),
-        ]
-    )
+    figures_dir = output_dir / "figures"
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    run_cmd([
+        python, "-m", "evaluation.plots",
+        "--metrics", str(output_dir / "metrics.csv"),
+        "--output-dir", str(figures_dir),
+        "--scores-dir", str(scores_dir),
+    ])
 
-    novelty_dir = Path(args.novelty_output_dir) if args.novelty_output_dir else (output_dir / "ensemble")
-    if args.skip_novelty:
-        print("\nSkipping novelty step (--skip-novelty)")
+    # ── STEP 5: Paired analysis ──────────────────────────────────
+    print("\n" + "=" * 60)
+    print("STEP 5: Paired analysis (score-drop, flip rates)")
+    print("=" * 60)
+    run_cmd([
+        python, "-m", "evaluation.paired_analysis",
+        "--scores-dir", str(scores_dir),
+        "--paired-long", str(long_output),
+        "--output", str(output_dir / "paired_summary.csv"),
+    ])
+
+    # ── STEP 6: Disagreement ensemble (novelty) ──────────────────
+    if args.skip_ensemble:
+        print("\nSkipping ensemble step (--skip-ensemble)")
     else:
-        ok, reason = check_novelty_prereqs(output_dir / "scores")
-        if not ok:
-            print(f"\nSkipping novelty step: {reason}")
-        else:
-            print("\n" + "=" * 60)
-            print("STEP 4: Run disagreement-ensemble novelty evaluation")
-            print("=" * 60)
-            run_cmd(
-                [
-                    python,
-                    "-m",
-                    "evaluation.disagreement_ensemble",
-                    "--scores-dir",
-                    str(output_dir / "scores"),
-                    "--output-dir",
-                    str(novelty_dir),
-                    "--allow-missing-detectors",
-                ]
-            )
+        # Check if we have both human and ai labels
+        has_labels = False
+        for f in sorted(scores_dir.glob("*_scores.csv")):
+            try:
+                df = pd.read_csv(f, usecols=["source"])
+                labels = set(df["source"].dropna().astype(str).str.lower().tolist())
+                if {"human", "ai"}.issubset(labels):
+                    has_labels = True
+                    break
+            except Exception:
+                continue
 
+        if has_labels:
+            print("\n" + "=" * 60)
+            print("STEP 6: Disagreement-ensemble (novelty)")
+            print("=" * 60)
+            run_cmd([
+                python, "-m", "evaluation.disagreement_ensemble",
+                "--scores-dir", str(scores_dir),
+                "--output-dir", str(output_dir / "ensemble"),
+                "--allow-missing-detectors",
+            ])
+        else:
+            print("\nSkipping ensemble: need both 'human' and 'ai' source labels")
+
+    # ── Done ─────────────────────────────────────────────────────
     print("\n" + "=" * 60)
-    print("PAIRED PIPELINE COMPLETE")
+    print("✓ PIPELINE COMPLETE")
     print("=" * 60)
-    print(f"Paired input: {paired_input}")
-    print(f"Long file: {long_output}")
-    print(f"Metrics: {output_dir / 'metrics.csv'}")
-    print(f"Paired summary: {paired_summary}")
-    if not args.skip_novelty:
-        print(f"Ensemble novelty outputs: {novelty_dir}")
+    print(f"Results in: {output_dir}")
+    print(f"  scores/          → raw detector scores")
+    print(f"  metrics.csv      → per-detector metrics + deltas")
+    print(f"  evasion_summary  → cross-paradigm evasion rates")
+    print(f"  transferability  → attack × detector AUROC-drop matrix")
+    print(f"  paired_summary   → score-drop + flip rates")
+    print(f"  figures/         → plots")
+    if not args.skip_ensemble:
+        print(f"  ensemble/        → disagreement ensemble results")
 
 
 if __name__ == "__main__":
