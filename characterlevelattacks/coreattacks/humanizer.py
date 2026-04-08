@@ -21,8 +21,9 @@ from nltk import pos_tag
 CORE_DIR = Path("/Users/yatharthnehva/NLPproject/characterlevelattacks/coreattacks")
 sys.path.insert(0, str(CORE_DIR.resolve()))
 
-from composite_scorer import composite_score
+from composite_scorer import composite_score, analyze_original, evasion_score, gpt2_analyze
 from homoglyph_attack import apply_homoglyph, apply_diacritic
+from csbp_loop import csbp_loop
 
 # dynamic emoji loader (uses emoji module and caches)
 from emoji_insertion import load_or_extract_emojis
@@ -274,31 +275,45 @@ def generate_candidates(text: str, register: str, n=20) -> List[str]:
 # Humanize (used by CLI and other callers)
 # ---------------------------
 def humanize(text: str, iterations: int = 5, n_candidates: int = 15, device_override: Optional[str] = None) -> str:
+    """
+    Humanize AI-generated text using the CSBP v2 beam search.
+
+    Delegates to csbp_loop which uses 5 targeted attack strategies:
+      1. BPE-break        – perturb at tokenisation fracture points
+      2. High-confidence   – target the most predictable tokens
+      3. Whitespace        – invisible Unicode chars inside words
+      4. Emoji attach      – emojis concatenated directly to words
+      5. Watermark         – flip KGW green-list tokens to red
+
+    The composite scorer (v2) optimises for detector EVASION,
+    not similarity to the original AI text.
+    """
     ensure_models_loaded(device_override)
     register = get_register(text)
-    print(f"Applying AGGRESSIVE {register.upper()} humanization (device={_SELECTED_DEVICE})...")
-    current_text = text
+    print(f"Applying CSBP v2 {register.upper()} humanization (device={_SELECTED_DEVICE})...")
 
-    for i in range(iterations):
-        cands = generate_candidates(current_text, register, n=n_candidates)
-        scored = []
-        for c in cands:
-            c_clean = strip_emojis(c)
-            res = composite_score(text, c_clean)
-            S = res.get('S', 0.0)
-            R = readability_score(c_clean)
-            zwsp_ratio = c.count('\u200b') / max(1, len(c))
-            emoji_count = sum(1 for ch in c if ch in emoji.EMOJI_DATA)
-            emoji_ratio = emoji_count / max(1, len(c.split()))
-            combined = 0.94 * S + 0.06 * R - 0.005 * zwsp_ratio
-            scored.append((combined, S, R, emoji_ratio, zwsp_ratio, c))
-        if not scored:
-            break
-        scored.sort(key=lambda x: x[0], reverse=True)
-        top_combined, top_S, top_R, top_emoji, top_zwsp, top_text = scored[0]
-        print(f"  Iter {i+1}: Combined={top_combined:.4f} | S={top_S:.4f} | R={top_R:.3f} | EMO={top_emoji:.3f} | ZWSP={top_zwsp:.4f}")
-        current_text = top_text
-    return current_text
+    # Proxy classifier: always returns "ai" so the beam search runs
+    # all K rounds, optimising purely by the evasion-oriented composite
+    # score. Actual detector evaluation happens downstream.
+    result = csbp_loop(
+        original_text  = text,
+        original_label = "ai",
+        classifier_fn  = lambda t: "ai",   # no early stopping
+        K              = iterations,
+        beam_width     = 5,
+        n_candidates   = n_candidates,
+        verbose        = True,
+    )
+
+    best = result['best_text']
+    breakdown = result['score_breakdown']
+    print(f"\n  Final:  S={breakdown.get('S',0):.4f}  "
+          f"evasion={breakdown.get('evasion',0):.4f}  "
+          f"bpe={breakdown.get('bpe_disruption',0):.4f}  "
+          f"wm_z={breakdown.get('watermark_z',0):.4f}  "
+          f"cos={breakdown.get('cosine',0):.4f}  "
+          f"ppl={breakdown.get('ppl',0):.1f}")
+    return best
 
 # ---------------------------
 # Robust dataset/text loader
@@ -538,7 +553,7 @@ def main():
     parser.add_argument("text", type=str, nargs='?', default=None, help="Text to humanize, or path to file (CSV/TSV/parquet/arrow/feather/txt).")
     parser.add_argument("--hc3", type=str, default=None, help="Path to HC3 dataset (CSV/TSV/parquet/arrow/feather or txt).")
     parser.add_argument("--m4", type=str, default=None, help="Path to M4 dataset (CSV/TSV/parquet/arrow/feather or txt).")
-    parser.add_argument("--sample-size", type=int, default=1, help="Total samples to draw across HC3+M4 (default: 10).")
+    parser.add_argument("--sample-size", type=int, default=10, help="Total samples to draw across HC3+M4 (default: 10).")
     parser.add_argument("--text-col", type=str, nargs='*', default=None, help="Preferred text column names for CSVs (checked in order).")
     parser.add_argument("--attack-type", type=str, default="char", help="Attack type label for CSV.")
     parser.add_argument("--model", type=str, default="all-mpnet-base-v2", help="Generator model label for CSV.")

@@ -1,113 +1,370 @@
+"""
+CSBP v2 – Evasion-Oriented Beam Search
+=======================================
+
+Character-level Search-Based Perturbation with five targeted strategies:
+
+  1. BPE-Break        – perturb at positions that maximally fragment BPE tokens
+  2. High-Confidence  – target words whose tokens the model predicted with
+                        near-certainty (the strongest AI signal)
+  3. Whitespace       – insert invisible Unicode chars (ZWSP, ZWJ, soft-hyphen)
+                        inside words to split BPE pre-tokenisation chunks
+  4. Emoji Attach     – concatenate emojis directly to words (no spaces) to
+                        disrupt the token-prediction chain
+  5. Watermark        – target green-list tokens specifically to flip them to
+                        red-list, suppressing the KGW z-score
+
+The composite scorer (v2) then ranks candidates by how effectively they
+EVADE detectors, not how closely they preserve the original AI text.
+"""
+
 import random
-import torch
+import re
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 
-from composite_scorer import composite_score
-from homoglyph_attack import attack_text, apply_homoglyph, apply_diacritic, is_eligible
+from composite_scorer import (
+    composite_score, analyze_original, GPT2_TOKENIZER,
+    _get_green_list, KGW_HASH_KEY, KGW_GAMMA,
+)
+from homoglyph_attack import (
+    HOMOGLYPH_MAP, DIACRITIC_MAP,
+    apply_homoglyph, apply_diacritic, is_eligible,
+)
 
 random.seed(42)
 np.random.seed(42)
-@dataclass(order=True)
-class Beam:
-    """A single candidate in the beam."""
-    score    : float          # composite score S (higher = better)
-    text     : str = field(compare=False)
-    round_no : int = field(compare=False, default=0)
-    history  : List[str] = field(compare=False, default_factory=list)
 
-    def __post_init__(self):
-        self.history = self.history + [self.text]
-ATTACK_MODES = ['homoglyph', 'diacritic', 'mixed']
 
-def generate_candidates(text: str, n_candidates: int = 10) -> List[str]:
+# ═══════════════════════════════════════════════════════════════
+# Constants
+# ═══════════════════════════════════════════════════════════════
+
+# Invisible chars that break GPT-2's pre-tokeniser regex (?\\p{L}+)
+# because they are Unicode category Cf (Format), not L (Letter).
+# Inserting one inside a word splits the word into separate pre-token chunks.
+INVISIBLE_BREAKERS = [
+    '\u200B',   # zero-width space
+    '\u200C',   # zero-width non-joiner
+    '\u200D',   # zero-width joiner  (from emoji ZWJ sequences)
+    '\u00AD',   # soft hyphen
+    '\u2060',   # word joiner
+    '\uFEFF',   # zero-width no-break space (BOM)
+]
+
+# Emojis used for context-disruption attachment.
+# Multi-byte sequences that shift the surrounding token IDs.
+ATTACK_EMOJIS = [
+    '🔥', '💡', '🚀', '📊', '🔍', '⚡', '🎯', '💻',
+    '🌐', '🔑', '🔧', '📈', '🧪', '🧬', '📝', '🛡',
+    '\U0001F468\u200D\U0001F4BB',      # 👨‍💻  (ZWJ sequence = long byte repr)
+    '\U0001F469\u200D\U0001F52C',      # 👩‍🔬
+    '\U0001F9D1\u200D\U0001F680',      # 🧑‍🚀
+]
+
+# Attack strategies
+STRATEGIES = ['bpe_break', 'high_conf', 'whitespace',
+              'emoji_attach', 'watermark', 'combined']
+
+
+# ═══════════════════════════════════════════════════════════════
+# BPE Vulnerability Analysis  (cached per word)
+# ═══════════════════════════════════════════════════════════════
+
+_BPE_VULN_CACHE: dict = {}
+
+def find_bpe_vulnerable_positions(word: str) -> List[Tuple[int, int, str, str]]:
     """
-    Generate n_candidates perturbations of text by:
-    - varying attack mode (homoglyph / diacritic / mixed)
-    - varying perturbation rate (0.2 – 0.6)
-    - varying which tokens are targeted (random subsets)
+    For a given word, find character positions where a perturbation causes
+    maximum BPE tokenisation disruption.
+
+    Returns list of (position, delta_tokens, replacement_char, action)
+    sorted by descending delta.
+      action = 'insert'  → invisible char inserted BEFORE position
+      action = 'replace' → character at position is substituted
+    """
+    if word in _BPE_VULN_CACHE:
+        return _BPE_VULN_CACHE[word]
+
+    orig_n  = len(GPT2_TOKENIZER.encode(word, add_special_tokens=False))
+    results = []
+
+    for i in range(len(word)):
+        ch = word[i]
+
+        # ── Try invisible-char insertion at this position ──
+        for breaker in ['\u200B', '\u200C', '\u200D']:
+            test = word[:i] + breaker + word[i:]
+            delta = len(GPT2_TOKENIZER.encode(test, add_special_tokens=False)) - orig_n
+            if delta > 0:
+                results.append((i, delta, breaker, 'insert'))
+                break           # one breaker per position is enough
+
+        # ── Try homoglyph substitution ──
+        lookup = ch if ch in HOMOGLYPH_MAP else ch.lower() if ch.lower() in HOMOGLYPH_MAP else None
+        if lookup:
+            repl = HOMOGLYPH_MAP[lookup]
+            test = word[:i] + repl + word[i+1:]
+            delta = len(GPT2_TOKENIZER.encode(test, add_special_tokens=False)) - orig_n
+            if delta > 0:
+                results.append((i, delta, repl, 'replace'))
+
+        # ── Try diacritic substitution ──
+        lookup_d = ch if ch in DIACRITIC_MAP else ch.lower() if ch.lower() in DIACRITIC_MAP else None
+        if lookup_d:
+            repl_d = DIACRITIC_MAP[lookup_d][0]       # deterministic for cache
+            test = word[:i] + repl_d + word[i+1:]
+            delta = len(GPT2_TOKENIZER.encode(test, add_special_tokens=False)) - orig_n
+            if delta > 0:
+                results.append((i, delta, repl_d, 'replace'))
+
+    results.sort(key=lambda x: -x[1])       # most disruptive first
+
+    if len(_BPE_VULN_CACHE) < 50000:
+        _BPE_VULN_CACHE[word] = results
+    return results
+
+
+# ═══════════════════════════════════════════════════════════════
+# Perturbation Helpers
+# ═══════════════════════════════════════════════════════════════
+
+def apply_bpe_targeted(word: str, max_edits: int = 3) -> str:
+    """Apply the most BPE-disruptive perturbations to a word."""
+    vulns = find_bpe_vulnerable_positions(word)
+    if not vulns:
+        fn = random.choice([apply_homoglyph, apply_diacritic])
+        return fn(word, rate=0.5)
+
+    chars      = list(word)
+    insertions = []          # (pos_in_original, char)
+    edits_done = 0
+
+    for pos, _delta, repl, action in vulns:
+        if edits_done >= max_edits:
+            break
+        if action == 'replace' and pos < len(chars):
+            chars[pos] = repl
+            edits_done += 1
+        elif action == 'insert':
+            insertions.append((pos, repl))
+            edits_done += 1
+
+    result = ''.join(chars)
+    # apply insertions in reverse so indices stay valid
+    for pos, ch in sorted(insertions, key=lambda x: -x[0]):
+        if pos <= len(result):
+            result = result[:pos] + ch + result[pos:]
+    return result
+
+
+def insert_whitespace_attack(word: str) -> str:
+    """Insert 1-2 invisible Unicode chars at random interior positions."""
+    if len(word) <= 2:
+        return word
+    chars    = list(word)
+    n_insert = random.randint(1, min(2, len(chars) - 1))
+    positions = random.sample(range(1, len(chars)), n_insert)
+    for pos in sorted(positions, reverse=True):
+        chars.insert(pos, random.choice(INVISIBLE_BREAKERS))
+    return ''.join(chars)
+
+
+def attach_emoji(word: str) -> str:
+    """Attach an emoji directly to a word (no space)."""
+    em = random.choice(ATTACK_EMOJIS)
+    return (word + em) if random.random() < 0.5 else (em + word)
+
+
+# ═══════════════════════════════════════════════════════════════
+# Candidate Generation (multi-strategy)
+# ═══════════════════════════════════════════════════════════════
+
+def generate_candidates(
+    text:          str,
+    original_text: str,
+    analysis:      dict,
+    n_candidates:  int  = 10,
+) -> List[str]:
+    """
+    Generate n_candidates perturbations using targeted strategies.
+
+    `analysis` comes from composite_scorer.analyze_original() and provides
+    priority_words / watermark_words indices so we attack WHERE it matters.
     """
     candidates = set()
-    tokens = text.split()
-    eligible = [i for i, t in enumerate(tokens) if is_eligible(t)]
+    words      = text.split()
+    max_idx    = len(words) - 1
+
+    priority_set  = {i for i in analysis.get('priority_words',  set()) if i <= max_idx}
+    watermark_set = {i for i in analysis.get('watermark_words', set()) if i <= max_idx}
+    eligible      = [i for i, w in enumerate(words) if is_eligible(w)]
 
     if not eligible:
         return [text]
 
-    for _ in range(n_candidates * 3):   # oversample, deduplicate
-        mode    = random.choice(ATTACK_MODES)
-        rate    = random.uniform(0.2, 0.6)
-        # randomly mask out some eligible positions this round
-        n_active = max(1, int(len(eligible) * random.uniform(0.4, 1.0)))
-        active   = set(random.sample(eligible, n_active))
+    for _ in range(n_candidates * 4):        # oversample, deduplicate
+        strategy  = random.choice(STRATEGIES)
+        new_words = list(words)
 
-        new_tokens = []
-        for i, tok in enumerate(tokens):
-            if i in active:
-                if mode == 'homoglyph':
-                    new_tokens.append(apply_homoglyph(tok, rate))
-                elif mode == 'diacritic':
-                    new_tokens.append(apply_diacritic(tok, rate))
-                else:
+        # ── Strategy 1: BPE-break ─────────────────────────────────
+        if strategy == 'bpe_break':
+            # Concentrate heavy perturbation on ≤ 20 % of words
+            n_targets = max(1, len(eligible) // 5)
+            targets   = random.sample(eligible, min(n_targets, len(eligible)))
+            for idx in targets:
+                new_words[idx] = apply_bpe_targeted(
+                    words[idx], max_edits=random.randint(2, 4))
+
+        # ── Strategy 2: High-confidence token targets ─────────────
+        elif strategy == 'high_conf':
+            targets = list(priority_set & set(eligible))
+            if not targets:
+                targets = random.sample(eligible, min(3, len(eligible)))
+            random.shuffle(targets)
+            for idx in targets[:max(1, len(targets) // 2)]:
+                fn = random.choice([apply_bpe_targeted,
+                                    lambda w: apply_homoglyph(w, rate=0.7),
+                                    lambda w: apply_diacritic(w, rate=0.7)])
+                new_words[idx] = fn(words[idx])
+
+        # ── Strategy 3: Invisible whitespace insertion ────────────
+        elif strategy == 'whitespace':
+            n_targets = max(1, len(eligible) // 5)
+            targets   = random.sample(eligible, min(n_targets, len(eligible)))
+            for idx in targets:
+                new_words[idx] = insert_whitespace_attack(words[idx])
+
+        # ── Strategy 4: Emoji attachment (context disruption) ─────
+        elif strategy == 'emoji_attach':
+            n_emoji = random.randint(1, max(1, len(words) // 10))
+            targets = random.sample(eligible, min(n_emoji, len(eligible)))
+            for idx in targets:
+                new_words[idx] = attach_emoji(words[idx])
+                # also perturb the word itself
+                if random.random() < 0.6:
+                    # re-extract the alpha portion and perturb it
                     fn = random.choice([apply_homoglyph, apply_diacritic])
-                    new_tokens.append(fn(tok, rate))
-            else:
-                new_tokens.append(tok)
+                    new_words[idx] = fn(new_words[idx], rate=0.3)
 
-        candidates.add(' '.join(new_tokens))
+        # ── Strategy 5: Watermark-targeted perturbation ───────────
+        elif strategy == 'watermark':
+            targets = list(watermark_set & set(eligible))
+            if not targets:
+                targets = random.sample(eligible, min(3, len(eligible)))
+            random.shuffle(targets)
+            for idx in targets[:max(1, len(targets) // 3)]:
+                # try several perturbations; keep the one that changes token IDs most
+                best, best_delta = words[idx], 0
+                for _ in range(6):
+                    fn   = random.choice([apply_homoglyph, apply_diacritic,
+                                          insert_whitespace_attack])
+                    attempt = fn(words[idx]) if fn != insert_whitespace_attack \
+                              else insert_whitespace_attack(words[idx])
+                    if fn in (apply_homoglyph, apply_diacritic):
+                        attempt = fn(words[idx], rate=random.uniform(0.4, 0.8))
+                    orig_toks = GPT2_TOKENIZER.encode(words[idx], add_special_tokens=False)
+                    new_toks  = GPT2_TOKENIZER.encode(attempt, add_special_tokens=False)
+                    delta     = abs(len(new_toks) - len(orig_toks))
+                    if delta > best_delta:
+                        best, best_delta = attempt, delta
+                new_words[idx] = best
+
+        # ── Strategy 6: Combined (mix 2-3 strategies) ─────────────
+        elif strategy == 'combined':
+            # a) BPE-break a few words
+            n_bpe     = max(1, len(eligible) // 8)
+            bpe_tgts  = random.sample(eligible, min(n_bpe, len(eligible)))
+            for idx in bpe_tgts:
+                new_words[idx] = apply_bpe_targeted(words[idx], max_edits=2)
+
+            # b) attach emoji to 1-2 other words
+            remaining = [i for i in eligible if i not in bpe_tgts]
+            if remaining:
+                n_em = random.randint(0, min(2, len(remaining)))
+                for idx in random.sample(remaining, min(n_em, len(remaining))):
+                    new_words[idx] = attach_emoji(words[idx])
+
+            # c) whitespace-attack one more word
+            remaining2 = [i for i in eligible if i not in bpe_tgts]
+            if remaining2 and random.random() < 0.5:
+                idx = random.choice(remaining2)
+                new_words[idx] = insert_whitespace_attack(words[idx])
+
+        # ── Collect ───────────────────────────────────────────────
+        cand = ' '.join(new_words)
+        if cand != text:
+            candidates.add(cand)
         if len(candidates) >= n_candidates:
             break
 
     return list(candidates)[:n_candidates]
+
+
+# ═══════════════════════════════════════════════════════════════
+# Beam Search Core
+# ═══════════════════════════════════════════════════════════════
+
+@dataclass(order=True)
+class Beam:
+    """A single candidate in the beam."""
+    score:    float
+    text:     str       = field(compare=False)
+    round_no: int       = field(compare=False, default=0)
+    history:  List[str] = field(compare=False, default_factory=list)
+
+    def __post_init__(self):
+        self.history = self.history + [self.text]
+
+
 def misclassifies(
-    text         : str,
-    classifier_fn: Callable[[str], str],
-    original_label: str
+    text:           str,
+    classifier_fn:  Callable[[str], str],
+    original_label: str,
 ) -> bool:
-    """
-    Returns True if the classifier now predicts a DIFFERENT label
-    than the original — i.e., the attack succeeded.
-    """
+    """True if the classifier's prediction changed (attack succeeded)."""
     return classifier_fn(text) != original_label
+
+
 def csbp_loop(
-    original_text  : str,
-    original_label : str,
-    classifier_fn  : Callable[[str], str],   # fn(text) -> label str
-    K              : int   = 5,              # max rounds
-    beam_width     : int   = 5,              # B: beams kept per round
-    n_candidates   : int   = 10,             # candidates per beam per round
-    score_weights  : Optional[dict] = None,  # override composite_score weights
-    verbose        : bool  = True,
+    original_text:   str,
+    original_label:  str,
+    classifier_fn:   Callable[[str], str],     # fn(text) → label
+    K:               int   = 5,                # max rounds
+    beam_width:      int   = 5,                # beams kept per round
+    n_candidates:    int   = 10,               # candidates per beam per round
+    score_weights:   Optional[dict] = None,    # override composite_score weights
+    verbose:         bool  = True,
 ) -> dict:
     """
-    CSBP (Character-level Search-Based Perturbation) beam search loop.
+    CSBP v2 beam-search loop.
 
-    At each round:
-      1. Expand every beam into n_candidates perturbations
-      2. Score all candidates with composite scorer S
-      3. Check each for misclassification → stop early if found
-      4. Prune to top-B beams by score
-      5. Repeat up to K rounds
-
-    Returns dict with:
-      - 'success'        : bool
-      - 'best_text'      : str
-      - 'best_score'     : float
-      - 'round_found'    : int or None
-      - 'score_breakdown': dict of final score terms
-      - 'beam_history'   : scores per round
+    Changes from v1
+    ────────────────
+    • Pre-analyses the original text ONCE via `analyze_original()` to identify
+      high-confidence and watermark-bearing words.
+    • Passes analysis to `generate_candidates()` so perturbations are
+      strategically targeted (not random).
+    • composite_score() now optimises for detector EVASION, not similarity.
     """
-    weights       = score_weights or {}
-    beam_history  = []
+    weights      = score_weights or {}
+    beam_history = []
 
-    # Initialise beam with original text
+    # ── Pre-analyse original text (runs once) ──
+    analysis = analyze_original(original_text)
+    if verbose:
+        print(f"[CSBP] Pre-analysis:  PPL={analysis['ppl']:.1f}  "
+              f"avg_rank={analysis['avg_rank']:.1f}  "
+              f"priority_words={len(analysis['priority_words'])}  "
+              f"watermark_words={len(analysis['watermark_words'])}")
+
+    # ── Initialise beam ──
     init_score = composite_score(original_text, original_text, **weights)['S']
     beams      = [Beam(score=init_score, text=original_text, round_no=0)]
 
-    best_attack     = None
-    best_score      = -1.0
-    round_found     = None
+    best_attack = None
+    best_score  = -1.0
 
     for k in range(1, K + 1):
         if verbose:
@@ -116,31 +373,35 @@ def csbp_loop(
         round_candidates: List[Beam] = []
 
         for beam in beams:
-            candidates = generate_candidates(beam.text, n_candidates)
+            cands = generate_candidates(
+                beam.text, original_text, analysis, n_candidates)
 
-            for cand_text in candidates:
-                # Score against the ORIGINAL (not the beam) to avoid drift
+            for cand_text in cands:
+                # Score against ORIGINAL to prevent drift
                 result = composite_score(original_text, cand_text, **weights)
                 S      = result['S']
 
-                # Misclassification check
+                # Early-stop: misclassification achieved
                 if misclassifies(cand_text, classifier_fn, original_label):
                     if verbose:
                         print(f"  ✓ Attack succeeded at round {k}  S={S:.4f}")
-                        print(f"    {cand_text}")
+                        print(f"    evasion={result['evasion']:.4f}  "
+                              f"bpe={result['bpe_disruption']:.4f}  "
+                              f"wm_z={result['watermark_z']:.4f}  "
+                              f"cos={result['cosine']:.4f}")
+                        print(f"    {cand_text[:120]}...")
                     return {
-                        'success'        : True,
-                        'best_text'      : cand_text,
-                        'best_score'     : S,
-                        'round_found'    : k,
+                        'success':         True,
+                        'best_text':       cand_text,
+                        'best_score':      S,
+                        'round_found':     k,
                         'score_breakdown': result,
-                        'beam_history'   : beam_history,
+                        'beam_history':    beam_history,
                     }
 
                 round_candidates.append(
                     Beam(score=S, text=cand_text, round_no=k,
-                         history=beam.history)
-                )
+                         history=beam.history))
 
         if not round_candidates:
             break
@@ -150,78 +411,88 @@ def csbp_loop(
         beams = round_candidates[:beam_width]
 
         top = beams[0]
-        beam_history.append({'round': k, 'top_score': top.score, 'top_text': top.text})
+        beam_history.append({
+            'round': k,
+            'top_score': top.score,
+            'top_text': top.text,
+        })
 
         if verbose:
-            print(f"  top S={top.score:.4f}  |  {top.text[:80]}...")
+            print(f"  top S={top.score:.4f}  |  {top.text[:100]}...")
 
         if top.score > best_score:
             best_score  = top.score
             best_attack = top.text
 
-    # Loop exhausted without misclassification
-    final_result = composite_score(original_text, best_attack or original_text, **weights)
+    # ── Loop exhausted without misclassification ──
+    final = composite_score(original_text,
+                            best_attack or original_text, **weights)
     return {
-        'success'        : False,
-        'best_text'      : best_attack or original_text,
-        'best_score'     : best_score,
-        'round_found'    : None,
-        'score_breakdown': final_result,
-        'beam_history'   : beam_history,
+        'success':         False,
+        'best_text':       best_attack or original_text,
+        'best_score':      best_score,
+        'round_found':     None,
+        'score_breakdown': final,
+        'beam_history':    beam_history,
     }
+
+
 def run_csbp_batch(
-    texts          : List[str],
-    labels         : List[str],
-    classifier_fn  : Callable[[str], str],
-    K              : int = 5,
-    beam_width     : int = 5,
-    n_candidates   : int = 10,
-    verbose        : bool = False,
+    texts:          List[str],
+    labels:         List[str],
+    classifier_fn:  Callable[[str], str],
+    K:              int  = 5,
+    beam_width:     int  = 5,
+    n_candidates:   int  = 10,
+    verbose:        bool = False,
 ) -> List[dict]:
-    """
-    Run CSBP over a list of (text, label) pairs.
-    Returns list of result dicts, one per input.
-    """
+    """Run CSBP over a batch of (text, label) pairs."""
     results = []
     for i, (text, label) in enumerate(zip(texts, labels)):
         print(f"\n[{i+1}/{len(texts)}] label={label}  text={text[:60]}...")
         result = csbp_loop(
-            original_text   = text,
-            original_label  = label,
-            classifier_fn   = classifier_fn,
-            K               = K,
-            beam_width      = beam_width,
-            n_candidates    = n_candidates,
-            verbose         = verbose,
+            original_text  = text,
+            original_label = label,
+            classifier_fn  = classifier_fn,
+            K              = K,
+            beam_width     = beam_width,
+            n_candidates   = n_candidates,
+            verbose        = verbose,
         )
         result['original_text']  = text
         result['original_label'] = label
         results.append(result)
 
     n_success = sum(r['success'] for r in results)
-    print(f"\n=== ASR: {n_success}/{len(results)} ({100*n_success/len(results):.1f}%) ===")
+    print(f"\n=== ASR: {n_success}/{len(results)} "
+          f"({100*n_success/len(results):.1f}%) ===")
     return results
+
+
+# ═══════════════════════════════════════════════════════════════
+# Demo
+# ═══════════════════════════════════════════════════════════════
+
 if __name__ == "__main__":
 
-    # Plug in any real classifier here — dummy shown for testing
     def dummy_classifier(text: str) -> str:
-        """Always returns 'positive' unless the word 'bad' appears."""
+        """Always 'positive' unless 'bad' appears."""
         return 'negative' if 'bad' in text.lower() else 'positive'
 
-    original  = "The film was genuinely bad and quite disappointing overall."
-    label     = dummy_classifier(original)
+    original = "The film was genuinely bad and quite disappointing overall."
+    label    = dummy_classifier(original)
 
     print(f"Original label : {label}")
     print(f"Original text  : {original}\n")
 
     result = csbp_loop(
-        original_text   = original,
-        original_label  = label,
-        classifier_fn   = dummy_classifier,
-        K               = 5,
-        beam_width      = 3,
-        n_candidates    = 8,
-        verbose         = True,
+        original_text  = original,
+        original_label = label,
+        classifier_fn  = dummy_classifier,
+        K              = 5,
+        beam_width     = 3,
+        n_candidates   = 8,
+        verbose        = True,
     )
 
     print("\n--- Final Result ---")
