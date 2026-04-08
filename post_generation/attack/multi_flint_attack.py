@@ -2,12 +2,23 @@ import os
 import json
 import logging
 import argparse
-import tensorflow as tf
+import sys
+from pathlib import Path
 import torch.multiprocessing as mp
 mp.set_start_method("spawn", force=True)
 
+try:
+    import tensorflow as tf
+except ImportError:
+    tf = None
+
 from tqdm import tqdm
 from datetime import datetime
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from textflint.adapter import auto_dataset
 from textattack.shared import AttackedText
 from textattack.goal_function_results import GoalFunctionResultStatus
@@ -30,7 +41,7 @@ def init(model_path, attacking_method="dualir", n_gpu=3):
     gpu_i = (p_idx - 1) * n_gpu
     # gpus = list(map(str, range(gpu_i, gpu_i+n_gpu)))
     # os.environ["CUDA_CUDA_VISIBLE_DEVICES"] = ",".join(gpus)
-    tf_gpus = tf.config.list_physical_devices("GPU")
+    tf_gpus = tf.config.list_physical_devices("GPU") if tf is not None else []
 
     if n_gpu == 3:
         os.environ["VICTIM_DEVICE"] = f"cuda:{gpu_i + 0}"
@@ -39,14 +50,16 @@ def init(model_path, attacking_method="dualir", n_gpu=3):
         # text_attack 会在一开始继承父进程的 TA_DEVICE 并初始化该 device，因此需要进行额外 patch
         from textattack.shared import utils
         utils.device = f"cuda:{gpu_i + 2}"
-        tf.config.set_visible_devices(tf_gpus[gpu_i+2], "GPU")
+        if tf is not None and len(tf_gpus) > gpu_i + 2:
+            tf.config.set_visible_devices(tf_gpus[gpu_i + 2], "GPU")
     elif n_gpu == 1:
         os.environ["VICTIM_DEVICE"] = f"cuda:{gpu_i}"
         os.environ["PPL_DEVICE"] = f"cuda:{gpu_i}"
         os.environ["TA_DEVICE"] = f"cuda:{gpu_i}"
         from textattack.shared import utils
         utils.device = f"cuda:{gpu_i}"
-        tf.config.set_visible_devices(tf_gpus[gpu_i], "GPU")
+        if tf is not None and len(tf_gpus) > gpu_i:
+            tf.config.set_visible_devices(tf_gpus[gpu_i], "GPU")
     else:
         raise NotImplementedError()
 
@@ -67,6 +80,9 @@ def init(model_path, attacking_method="dualir", n_gpu=3):
         recipe_func = get_recipe
     elif attacking_method == "no_max_perturbed":
         from attack.recipes.ablation_rspu_mlm_dualir_no_max_perturbed import get_recipe
+        recipe_func = get_recipe
+    elif attacking_method in {"phase2", "phase2_span", "span_rewrite"}:
+        from attack.recipes.rspmu_spanseq2seq_dualir import get_recipe
         recipe_func = get_recipe
     else:
         raise NotImplementedError(f"not supported attacking recipe -> {attacking_method}")
@@ -159,6 +175,28 @@ def main(args):
             continue
         os.environ[env_key] = str(env_value)
 
+    phase2_env_overrides = {
+        "HMGC_PHASE2_REWRITE_MODEL": args.phase2_rewrite_model,
+        "HMGC_PHASE2_NUM_CANDIDATES": args.phase2_num_candidates,
+        "HMGC_PHASE2_MIN_SPAN_LEN": args.phase2_min_span_len,
+        "HMGC_PHASE2_MAX_SPAN_LEN": args.phase2_max_span_len,
+        "HMGC_PHASE2_MAX_SPANS_CONSIDERED": args.phase2_max_spans_considered,
+        "HMGC_PHASE2_MAX_SOURCE_LENGTH": args.phase2_max_source_length,
+        "HMGC_PHASE2_MAX_NEW_TOKENS": args.phase2_max_new_tokens,
+        "HMGC_PHASE2_MAX_REWRITE_WORDS": args.phase2_max_rewrite_words,
+        "HMGC_PHASE2_TOP_P": args.phase2_top_p,
+        "HMGC_PHASE2_TEMPERATURE": args.phase2_temperature,
+        "HMGC_PHASE2_NUM_BEAMS": args.phase2_num_beams,
+        "HMGC_PHASE2_DO_SAMPLE": args.phase2_do_sample,
+        "HMGC_PHASE2_ALPHA": args.phase2_alpha,
+        "HMGC_PHASE2_ALLOW_SHORT_SPAN_FALLBACK": args.phase2_allow_short_span_fallback,
+        "HMGC_PHASE2_ALLOW_UNIGRAM_FALLBACK": args.phase2_allow_unigram_fallback,
+    }
+    for env_key, env_value in phase2_env_overrides.items():
+        if env_value is None:
+            continue
+        os.environ[env_key] = str(env_value)
+
     # prepare test data
     sample_list = list()
     with open(args.data_file, "r") as rf:
@@ -195,7 +233,7 @@ if __name__ == "__main__":
         "--attacking_method",
         type=str,
         default="dualir",
-        help="Attacking method: dualir|wir|greedy|no_pos|no_use(no_semantic)|no_max_perturbed",
+        help="Attacking method: dualir|wir|greedy|no_pos|no_use(no_semantic)|no_max_perturbed|phase2(phase2_span/span_rewrite)",
     )
     parser.add_argument("--num_gpu_per_process", type=int, default=3, help="Number of gpus of one process")
     parser.add_argument("--num_workers", type=int, default=2, help="Total gpu usage is num_workers * num_gpu_per_process")
@@ -209,5 +247,20 @@ if __name__ == "__main__":
     parser.add_argument("--semantic_stsb_max_score", type=float, default=None, help="Raw STS-B max score for normalization")
     parser.add_argument("--semantic_skip_short", type=str, default=None, help="Skip scoring short texts: true/false")
     parser.add_argument("--semantic_device", type=str, default=None, help="Device override for semantic model")
+    parser.add_argument("--phase2_rewrite_model", type=str, default=None, help="Phase-2 seq2seq rewrite model")
+    parser.add_argument("--phase2_num_candidates", type=int, default=None, help="Phase-2 number of rewrite candidates per span")
+    parser.add_argument("--phase2_min_span_len", type=int, default=None, help="Phase-2 minimum span length")
+    parser.add_argument("--phase2_max_span_len", type=int, default=None, help="Phase-2 maximum span length")
+    parser.add_argument("--phase2_max_spans_considered", type=int, default=None, help="Phase-2 max spans explored per sample")
+    parser.add_argument("--phase2_max_source_length", type=int, default=None, help="Phase-2 seq2seq source max length")
+    parser.add_argument("--phase2_max_new_tokens", type=int, default=None, help="Phase-2 seq2seq max new tokens")
+    parser.add_argument("--phase2_max_rewrite_words", type=int, default=None, help="Phase-2 rewritten span max words")
+    parser.add_argument("--phase2_top_p", type=float, default=None, help="Phase-2 top-p sampling")
+    parser.add_argument("--phase2_temperature", type=float, default=None, help="Phase-2 sampling temperature")
+    parser.add_argument("--phase2_num_beams", type=int, default=None, help="Phase-2 beam size when sampling is disabled")
+    parser.add_argument("--phase2_do_sample", type=str, default=None, help="Phase-2 use sampling: true/false")
+    parser.add_argument("--phase2_alpha", type=float, default=None, help="Phase-2 dual ranking alpha")
+    parser.add_argument("--phase2_allow_short_span_fallback", type=str, default=None, help="Allow short-span rewrite fallback: true/false")
+    parser.add_argument("--phase2_allow_unigram_fallback", type=str, default=None, help="Allow unigram ranking fallback when no valid spans: true/false")
     args = parser.parse_args()
     main(args)

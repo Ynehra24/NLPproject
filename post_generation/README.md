@@ -60,6 +60,42 @@ python attack/scripts/smoke_semantic_constraint.py \
 If `textattack` is unavailable in the active environment, the script automatically falls back to direct Transformers scoring and still validates model loading.
 
 
+## Phase-2 Span-Level Rewriting
+Phase-2 adds span-level attack units and replaces MLM word swaps with seq2seq span rewriting.
+
+- Span ranking unit: contiguous n-grams (default `3-6` words)
+- Span prioritization: victim gradient + PPL sensitivity (dual ranking)
+- Substitution model: instruction-tuned seq2seq rewriting (default `google/flan-t5-base`)
+
+Example invocation (no training involved):
+
+```bash
+python attack/multi_flint_attack.py \
+    --model_name_or_path /path/to/surrogate \
+    --data_file /path/to/data.jsonl \
+    --output_dir /path/to/output \
+    --attacking_method phase2 \
+    --phase2_rewrite_model google/flan-t5-base \
+    --phase2_min_span_len 3 \
+    --phase2_max_span_len 6 \
+    --phase2_num_candidates 8 \
+    --phase2_alpha 0.2
+```
+
+Useful tuning flags:
+- `--phase2_max_spans_considered`
+- `--phase2_max_new_tokens`
+- `--phase2_temperature`, `--phase2_top_p`, `--phase2_do_sample`
+
+Quick smoke check for Phase-2 span rewriting (single sample, no training):
+
+```bash
+python attack/scripts/smoke_phase2_span_rewrite.py \
+    --rewrite_model_name google/flan-t5-small \
+    --num_candidate 4
+```
+
+
 ## Citation
 If you find our paper/resources useful, please cite:
 ```

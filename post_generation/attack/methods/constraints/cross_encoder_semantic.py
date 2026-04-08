@@ -60,7 +60,11 @@ class CrossEncoderSemanticSimilarity(Constraint):
             return reference_text.text, transformed_text.text
 
         try:
-            modified_index = next(iter(transformed_text.attack_attrs["newly_modified_indices"]))
+            modified_indices = transformed_text.attack_attrs["newly_modified_indices"]
+            if len(modified_indices) == 0:
+                raise KeyError("`newly_modified_indices` is empty")
+            sorted_indices = sorted(modified_indices)
+            modified_index = sorted_indices[len(sorted_indices) // 2]
         except KeyError as exc:
             raise KeyError(
                 "Cannot apply cross-encoder constraint without `newly_modified_indices`"
