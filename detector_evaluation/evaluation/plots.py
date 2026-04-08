@@ -64,12 +64,13 @@ def main() -> None:
 
     sns.set_theme(style="whitegrid")
 
-    plt.figure(figsize=(10, 5))
-    sns.barplot(data=df, x="detector_name", y="auroc", hue="attack_type")
-    plt.xticks(rotation=20)
-    plt.tight_layout()
-    plt.savefig(out_dir / "auroc_by_detector_and_attack.png", dpi=200)
-    plt.close()
+    if "auroc" in df.columns:
+        plt.figure(figsize=(10, 5))
+        sns.barplot(data=df, x="detector_name", y="auroc", hue="attack_type")
+        plt.xticks(rotation=20)
+        plt.tight_layout()
+        plt.savefig(out_dir / "auroc_by_detector_and_attack.png", dpi=200)
+        plt.close()
 
     if "attack_success_rate" in df.columns:
         plt.figure(figsize=(10, 5))
