@@ -46,3 +46,13 @@ characterlevelattacks/stylometric
 
 post_generation/data/
 *.safetensors
+*.log
+post_generation/HMGC-dataset/
+
+# Post-generation large artifacts
+post_generation/outputs/
+post_generation/**/*.pth
+post_generation/**/*.pt
+post_generation/**/*.bin
+post_generation/**/*.ckpt
+post_generation/Paper.pdf
