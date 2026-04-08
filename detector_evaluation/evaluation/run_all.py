@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -34,6 +35,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--watermark-gamma", type=float, default=0.5)
     parser.add_argument("--watermark-hash-key", type=int, default=15485863)
     parser.add_argument("--roberta-model-dir", default=None, help="Run only if fine-tuned dir is provided")
+    parser.add_argument("--thresholds-file", default="results/thresholds.json",
+                        help="JSON file with per-detector calibrated thresholds")
     return parser.parse_args()
 
 
@@ -42,118 +45,80 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Load calibrated thresholds if available
+    thresholds: dict[str, float] = {}
+    thresholds_path = Path(args.thresholds_file)
+    if thresholds_path.exists():
+        thresholds = json.loads(thresholds_path.read_text())
+        print(f"Loaded calibrated thresholds from {thresholds_path}")
+    else:
+        print(f"No thresholds file found at {thresholds_path} — using detector defaults")
+
     python = sys.executable
 
-    run_cmd(
-        [
-            python,
-            "-m",
-            "detectors.stats_baseline.score",
-            "--input",
-            args.input,
-            "--output",
-            str(output_dir / "stats_baseline_scores.csv"),
-            "--model-name",
-            args.stats_model,
-            "--device",
-            args.device,
-        ]
-    )
+    stats_cmd = [python, "-m", "detectors.stats_baseline.score",
+                 "--input", args.input,
+                 "--output", str(output_dir / "stats_baseline_scores.csv"),
+                 "--model-name", args.stats_model,
+                 "--device", args.device]
+    if "stats_baseline" in thresholds:
+        stats_cmd += ["--threshold", str(thresholds["stats_baseline"])]
+    run_cmd(stats_cmd)
 
     if args.roberta_model_dir:
-        run_cmd(
-            [
-                python,
-                "-m",
-                "detectors.roberta_classifier.infer",
-                "--input",
-                args.input,
-                "--model-dir",
-                args.roberta_model_dir,
-                "--output",
-                str(output_dir / "roberta_classifier_scores.csv"),
-                "--device",
-                args.device,
-            ]
-        )
+        roberta_cmd = [python, "-m", "detectors.roberta_classifier.infer",
+                       "--input", args.input,
+                       "--model-dir", args.roberta_model_dir,
+                       "--output", str(output_dir / "roberta_classifier_scores.csv"),
+                       "--device", args.device]
+        if "roberta_classifier" in thresholds:
+            roberta_cmd += ["--threshold", str(thresholds["roberta_classifier"])]
+        run_cmd(roberta_cmd)
 
     if args.run_detectgpt:
-        run_cmd(
-            [
-                python,
-                "-m",
-                "detectors.detectgpt.score",
-                "--input",
-                args.input,
-                "--output",
-                str(output_dir / "detectgpt_style_scores.csv"),
-                "--lm-name",
-                args.detectgpt_lm,
-                "--mask-model",
-                args.detectgpt_mask,
-                "--device",
-                args.device,
-                "--n-perturb",
-                str(args.detectgpt_perturb),
-            ]
-        )
+        detectgpt_cmd = [python, "-m", "detectors.detectgpt.score",
+                         "--input", args.input,
+                         "--output", str(output_dir / "detectgpt_style_scores.csv"),
+                         "--lm-name", args.detectgpt_lm,
+                         "--mask-model", args.detectgpt_mask,
+                         "--device", args.device,
+                         "--n-perturb", str(args.detectgpt_perturb)]
+        if "detectgpt_style" in thresholds:
+            detectgpt_cmd += ["--threshold", str(thresholds["detectgpt_style"])]
+        run_cmd(detectgpt_cmd)
 
     if args.run_fast_detectgpt:
-        run_cmd(
-            [
-                python,
-                "-m",
-                "detectors.fast_detectgpt.score",
-                "--input",
-                args.input,
-                "--output",
-                str(output_dir / "fast_detectgpt_scores.csv"),
-                "--scoring-model",
-                args.fast_scoring_model,
-                "--reference-model",
-                args.fast_reference_model,
-                "--device",
-                args.device,
-            ]
-        )
+        fastdet_cmd = [python, "-m", "detectors.fast_detectgpt.score",
+                       "--input", args.input,
+                       "--output", str(output_dir / "fast_detectgpt_scores.csv"),
+                       "--scoring-model", args.fast_scoring_model,
+                       "--reference-model", args.fast_reference_model,
+                       "--device", args.device]
+        if "fast_detectgpt" in thresholds:
+            fastdet_cmd += ["--threshold", str(thresholds["fast_detectgpt"])]
+        run_cmd(fastdet_cmd)
 
     if args.run_binoculars:
-        run_cmd(
-            [
-                python,
-                "-m",
-                "detectors.binoculars.score",
-                "--input",
-                args.input,
-                "--output",
-                str(output_dir / "binoculars_scores.csv"),
-                "--observer-model",
-                args.binoculars_observer_model,
-                "--performer-model",
-                args.binoculars_performer_model,
-                "--device",
-                args.device,
-            ]
-        )
+        bino_cmd = [python, "-m", "detectors.binoculars.score",
+                    "--input", args.input,
+                    "--output", str(output_dir / "binoculars_scores.csv"),
+                    "--observer-model", args.binoculars_observer_model,
+                    "--performer-model", args.binoculars_performer_model,
+                    "--device", args.device]
+        if "binoculars" in thresholds:
+            bino_cmd += ["--threshold", str(thresholds["binoculars"])]
+        run_cmd(bino_cmd)
 
     if args.run_watermark:
-        run_cmd(
-            [
-                python,
-                "-m",
-                "detectors.watermark.score",
-                "--input",
-                args.input,
-                "--output",
-                str(output_dir / "kgw_watermark_scores.csv"),
-                "--tokenizer-name",
-                args.watermark_tokenizer,
-                "--gamma",
-                str(args.watermark_gamma),
-                "--hash-key",
-                str(args.watermark_hash_key),
-            ]
-        )
+        wm_cmd = [python, "-m", "detectors.watermark.score",
+                  "--input", args.input,
+                  "--output", str(output_dir / "kgw_watermark_scores.csv"),
+                  "--tokenizer-name", args.watermark_tokenizer,
+                  "--gamma", str(args.watermark_gamma),
+                  "--hash-key", str(args.watermark_hash_key)]
+        if "kgw_watermark" in thresholds:
+            wm_cmd += ["--threshold", str(thresholds["kgw_watermark"])]
+        run_cmd(wm_cmd)
 
     print(f"All requested detector runs complete. Outputs in: {output_dir.resolve()}")
 
