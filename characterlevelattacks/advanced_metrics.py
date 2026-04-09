@@ -23,11 +23,10 @@ URL_REGEX = re.compile(
 )
 
 def apply_zone_detector(text: str) -> str:
-    """Masks URLs and Emojis from the text."""
-    # Mask URLs
+    """Masks URLs only. Emojis and invisible chars are intentional attack
+    perturbations and must reach the detectors intact — do NOT strip them."""
+    # Mask URLs only
     text = URL_REGEX.sub('[URL]', text)
-    # Mask Emojis
-    text = emoji.replace_emoji(text, replace='[EMOJI]')
     return text
 
 # -----------------------------------------------------

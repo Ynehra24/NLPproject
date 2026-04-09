@@ -2,7 +2,7 @@
 CSBP v2 – Evasion-Oriented Beam Search
 =======================================
 
-Character-level Search-Based Perturbation with five targeted strategies:
+Character-level Search-Based Perturbation with targeted strategies:
 
   1. BPE-Break        – perturb at positions that maximally fragment BPE tokens
   2. High-Confidence  – target words whose tokens the model predicted with
@@ -13,6 +13,8 @@ Character-level Search-Based Perturbation with five targeted strategies:
                         disrupt the token-prediction chain
   5. Watermark        – target green-list tokens specifically to flip them to
                         red-list, suppressing the KGW z-score
+  6. Scorched Earth   – ALL strategies applied simultaneously at maximum
+                        intensity to every eligible word
 
 The composite scorer (v2) then ranks candidates by how effectively they
 EVADE detectors, not how closely they preserve the original AI text.
@@ -41,7 +43,7 @@ np.random.seed(42)
 # Constants
 # ═══════════════════════════════════════════════════════════════
 
-# Invisible chars that break GPT-2's pre-tokeniser regex (?\\p{L}+)
+# Invisible chars that break GPT-2's pre-tokeniser regex (?\p{L}+)
 # because they are Unicode category Cf (Format), not L (Letter).
 # Inserting one inside a word splits the word into separate pre-token chunks.
 INVISIBLE_BREAKERS = [
@@ -63,9 +65,11 @@ ATTACK_EMOJIS = [
     '\U0001F9D1\u200D\U0001F680',      # 🧑‍🚀
 ]
 
-# Attack strategies
+# Attack strategies — scorched_earth is weighted 3x because it's the most
+# effective against statistical detectors.
 STRATEGIES = ['bpe_break', 'high_conf', 'whitespace',
-              'emoji_attach', 'watermark', 'combined']
+              'emoji_attach', 'watermark', 'combined',
+              'scorched_earth', 'scorched_earth', 'scorched_earth']
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -160,12 +164,26 @@ def apply_bpe_targeted(word: str, max_edits: int = 3) -> str:
 
 
 def insert_whitespace_attack(word: str) -> str:
-    """Insert 1-2 invisible Unicode chars at random interior positions."""
+    """Insert 2-3 invisible Unicode chars at random interior positions."""
     if len(word) <= 2:
         return word
     chars    = list(word)
-    n_insert = random.randint(1, min(2, len(chars) - 1))
-    positions = random.sample(range(1, len(chars)), n_insert)
+    n_insert = random.randint(2, min(3, len(chars) - 1))
+    positions = random.sample(range(1, len(chars)), min(n_insert, len(chars) - 1))
+    for pos in sorted(positions, reverse=True):
+        chars.insert(pos, random.choice(INVISIBLE_BREAKERS))
+    return ''.join(chars)
+
+
+def insert_whitespace_attack_heavy(word: str) -> str:
+    """Insert 3-5 invisible Unicode chars — used by scorched_earth.
+    Targets every 2-3 character boundary to maximally shatter BPE."""
+    if len(word) <= 1:
+        return word
+    chars = list(word)
+    max_pos = len(chars) - 1
+    n_insert = min(max_pos, random.randint(3, 5))
+    positions = random.sample(range(1, len(chars)), min(n_insert, max_pos))
     for pos in sorted(positions, reverse=True):
         chars.insert(pos, random.choice(INVISIBLE_BREAKERS))
     return ''.join(chars)
@@ -175,6 +193,28 @@ def attach_emoji(word: str) -> str:
     """Attach an emoji directly to a word (no space)."""
     em = random.choice(ATTACK_EMOJIS)
     return (word + em) if random.random() < 0.5 else (em + word)
+
+
+def scorched_earth_word(word: str) -> str:
+    """
+    SCORCHED EARTH: Apply ALL available attacks to a single word
+    simultaneously for maximum BPE destruction.
+
+    1. Homoglyph substitution at high rate
+    2. Diacritic substitution on remaining eligible chars
+    3. Heavy invisible-char insertion
+    4. Optionally attach an emoji
+    """
+    # Step 1: heavy homoglyph pass
+    result = apply_homoglyph(word, rate=0.8)
+    # Step 2: diacritic pass on whatever's left
+    result = apply_diacritic(result, rate=0.6)
+    # Step 3: heavy invisible char insertion
+    result = insert_whitespace_attack_heavy(result)
+    # Step 4: attach emoji with 40% probability
+    if random.random() < 0.4:
+        result = attach_emoji(result)
+    return result
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -244,7 +284,6 @@ def generate_candidates(
                 new_words[idx] = attach_emoji(words[idx])
                 # also perturb the word itself
                 if random.random() < 0.6:
-                    # re-extract the alpha portion and perturb it
                     fn = random.choice([apply_homoglyph, apply_diacritic])
                     new_words[idx] = fn(new_words[idx], rate=0.3)
 
@@ -260,10 +299,10 @@ def generate_candidates(
                 for _ in range(6):
                     fn   = random.choice([apply_homoglyph, apply_diacritic,
                                           insert_whitespace_attack])
-                    attempt = fn(words[idx]) if fn != insert_whitespace_attack \
-                              else insert_whitespace_attack(words[idx])
                     if fn in (apply_homoglyph, apply_diacritic):
                         attempt = fn(words[idx], rate=random.uniform(0.4, 0.8))
+                    else:
+                        attempt = insert_whitespace_attack(words[idx])
                     orig_toks = GPT2_TOKENIZER.encode(words[idx], add_special_tokens=False)
                     new_toks  = GPT2_TOKENIZER.encode(attempt, add_special_tokens=False)
                     delta     = abs(len(new_toks) - len(orig_toks))
@@ -291,6 +330,17 @@ def generate_candidates(
             if remaining2 and random.random() < 0.5:
                 idx = random.choice(remaining2)
                 new_words[idx] = insert_whitespace_attack(words[idx])
+
+        # ── Strategy 7: SCORCHED EARTH ────────────────────────────
+        #    Apply ALL attacks to EVERY eligible word at maximum intensity.
+        #    This is the nuclear option — maximum BPE destruction.
+        elif strategy == 'scorched_earth':
+            # Determine intensity: perturb 40-80% of eligible words
+            intensity = random.uniform(0.4, 0.8)
+            n_targets = max(1, int(len(eligible) * intensity))
+            targets   = random.sample(eligible, min(n_targets, len(eligible)))
+            for idx in targets:
+                new_words[idx] = scorched_earth_word(words[idx])
 
         # ── Collect ───────────────────────────────────────────────
         cand = ' '.join(new_words)
@@ -347,6 +397,7 @@ def csbp_loop(
     • Passes analysis to `generate_candidates()` so perturbations are
       strategically targeted (not random).
     • composite_score() now optimises for detector EVASION, not similarity.
+    • Implements scorched_earth strategy for maximum BPE destruction.
     """
     weights      = score_weights or {}
     beam_history = []

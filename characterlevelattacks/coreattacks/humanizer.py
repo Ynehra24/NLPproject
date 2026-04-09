@@ -21,7 +21,7 @@ from nltk import pos_tag
 CORE_DIR = Path("/Users/yatharthnehva/NLPproject/characterlevelattacks/coreattacks")
 sys.path.insert(0, str(CORE_DIR.resolve()))
 
-from composite_scorer import composite_score, analyze_original, evasion_score, gpt2_analyze
+from composite_scorer import composite_score
 from homoglyph_attack import apply_homoglyph, apply_diacritic
 from csbp_loop import csbp_loop
 
@@ -274,23 +274,32 @@ def generate_candidates(text: str, register: str, n=20) -> List[str]:
 # ---------------------------
 # Humanize (used by CLI and other callers)
 # ---------------------------
-def humanize(text: str, iterations: int = 5, n_candidates: int = 15, device_override: Optional[str] = None) -> str:
+def humanize(
+    text: str,
+    iterations: int = 7,
+    n_candidates: int = 20,
+    beam_width: int = 7,
+    device_override: Optional[str] = None,
+) -> str:
     """
     Humanize AI-generated text using the CSBP v2 beam search.
 
-    Delegates to csbp_loop which uses 5 targeted attack strategies:
+    Strategies used (scorched_earth weighted 3x in random selection):
       1. BPE-break        – perturb at tokenisation fracture points
-      2. High-confidence   – target the most predictable tokens
-      3. Whitespace        – invisible Unicode chars inside words
-      4. Emoji attach      – emojis concatenated directly to words
-      5. Watermark         – flip KGW green-list tokens to red
+      2. High-confidence  – target the most predictable (AI-signal) tokens
+      3. Whitespace       – invisible Unicode chars inside words
+      4. Emoji attach     – emojis concatenated directly to words
+      5. Watermark        – flip KGW green-list tokens to red
+      6. Combined         – mix of 2-3 of the above
+      7. Scorched Earth   – ALL attacks applied simultaneously at max intensity
 
     The composite scorer (v2) optimises for detector EVASION,
     not similarity to the original AI text.
     """
     ensure_models_loaded(device_override)
     register = get_register(text)
-    print(f"Applying CSBP v2 {register.upper()} humanization (device={_SELECTED_DEVICE})...")
+    print(f"Applying CSBP v2 SCORCHED EARTH {register.upper()} humanization "
+          f"(K={iterations}, beam={beam_width}, cands={n_candidates}, device={_SELECTED_DEVICE})...")
 
     # Proxy classifier: always returns "ai" so the beam search runs
     # all K rounds, optimising purely by the evasion-oriented composite
@@ -300,7 +309,7 @@ def humanize(text: str, iterations: int = 5, n_candidates: int = 15, device_over
         original_label = "ai",
         classifier_fn  = lambda t: "ai",   # no early stopping
         K              = iterations,
-        beam_width     = 5,
+        beam_width     = beam_width,
         n_candidates   = n_candidates,
         verbose        = True,
     )
@@ -557,10 +566,11 @@ def main():
     parser.add_argument("--text-col", type=str, nargs='*', default=None, help="Preferred text column names for CSVs (checked in order).")
     parser.add_argument("--attack-type", type=str, default="char", help="Attack type label for CSV.")
     parser.add_argument("--model", type=str, default="all-mpnet-base-v2", help="Generator model label for CSV.")
-    parser.add_argument("-o", "--output", type=str, default=str(Path.home() / "Downloads" / "teammate_pairs_template.csv"), help="Output CSV path (default: ~/Downloads/teammate_pairs_template.csv).")
+    parser.add_argument("-o", "--output", type=str, default=str(Path.home() / "Downloads" / "teammate_pairs_template_final_2000.csv"), help="Output CSV path (default: ~/Downloads/teammate_pairs_template.csv).")
     parser.add_argument("--device", type=str, choices=["cpu","mps"], default="mps", help="Force device for model loading (default: mps).")
-    parser.add_argument("--iterations", type=int, default=3, help="Humanizer iterations per example.")
-    parser.add_argument("--cands", type=int, default=15, help="Candidates per iteration.")
+    parser.add_argument("--iterations", type=int, default=7, help="CSBP beam search rounds per example (default: 7).")
+    parser.add_argument("--cands", type=int, default=20, help="Candidates per beam per round (default: 20).")
+    parser.add_argument("--beam-width", type=int, default=7, help="Number of beams kept per round (default: 7).")
     args = parser.parse_args()
 
     out_path = Path(args.output)
@@ -616,7 +626,13 @@ def main():
 
     rows = []
     for pid, txt in examples:
-        humanized = humanize(txt, iterations=args.iterations, n_candidates=args.cands, device_override=device_flag)
+        humanized = humanize(
+            txt,
+            iterations=args.iterations,
+            n_candidates=args.cands,
+            beam_width=args.beam_width,
+            device_override=device_flag,
+        )
         rows.append((pid, txt, humanized, args.attack_type, args.model))
         print(f"[{pid}] Done.")
 

@@ -160,25 +160,28 @@ def watermark_evasion(z: float) -> float:
 
 def readability_score(ppl: float) -> float:
     """
-    Perplexity guard:
-      < 30  → suspiciously smooth (AI)       → low reward
-      30-300 → human sweet spot              → full reward
-      > 300  → increasingly broken/gibberish → decaying reward
+    Perplexity guard — v3 (aggressive):
+      < 30   → suspiciously smooth (AI)  → low reward
+      30+    → the higher the better     → full reward
+      > 5000 → actual byte-soup garbage  → mild decay
+
+    We WANT high perplexity — it means the text no longer
+    looks AI-generated to statistical detectors.
     """
     if ppl < 30:
         return 0.2 + 0.8 * (ppl / 30)
-    elif ppl <= 300:
+    elif ppl <= 5000:
         return 1.0
-    elif ppl <= 600:
-        return max(0.25, 1.0 - (ppl - 300) / 400)
     else:
-        return max(0.05, 0.25 - (ppl - 600) / 2000)
+        return max(0.3, 1.0 - (ppl - 5000) / 50000)
 
 
-def coherence_gate(cosine: float, min_thresh: float = 0.50) -> float:
+def coherence_gate(cosine: float, min_thresh: float = 0.20) -> float:
     """
-    Multiplicative gate.  Prevents selection of nonsense.
-    Above threshold → 1.0.   Below → smooth penalty → 0.
+    Multiplicative gate — v3 (relaxed).
+    Threshold lowered to 0.20: invisible-char perturbations
+    look identical to humans but can drop SBERT cosine because
+    SBERT's own tokenizer also fragments on ZWSP/ZWJ.
     """
     if cosine >= min_thresh:
         return 1.0
@@ -194,11 +197,11 @@ def coherence_gate(cosine: float, min_thresh: float = 0.50) -> float:
 def composite_score(
     original: str,
     attacked: str,
-    w_evasion:     float = 0.40,
+    w_evasion:     float = 0.55,
     w_bpe:         float = 0.15,
     w_watermark:   float = 0.15,
-    w_readability: float = 0.15,
-    w_similarity:  float = 0.15,
+    w_readability: float = 0.05,
+    w_similarity:  float = 0.10,
 ) -> dict:
     """
     Evasion-oriented composite score.   Higher S = better attack candidate.
