@@ -47,8 +47,8 @@ def run():
             out_df['humanized_text'] = out_df[orig_col].progress_apply(
                 lambda t: humanize(
                     str(t), 
-                    iterations=15,       
-                    n_candidates=10, 
+                    iterations=30,       
+                    n_candidates=15, 
                     beam_width=5, 
                     device_override="mps",
                     target_model=model_uri
