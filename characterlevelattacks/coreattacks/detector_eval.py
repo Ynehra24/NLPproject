@@ -23,8 +23,8 @@ print(f"[Detector Eval] Using device: {device}")
 INPUT_DIR = Path("/Users/yatharthnehva/NLPproject/characterlevelattacks/coreattacks/attacked_outputs")
 
 # Dynamically find all datasets that have been attacked (sst2, hc3, etc.)
-DATASETS = sorted(list(set([f.stem.split('_')[0] for f in INPUT_DIR.glob('*.csv') if '_' in f.name and 'metrics' not in f.name])))
-ATTACK_MODES = ["homoglyph", "diacritic", "mixed", "emoji", "humanizer"]
+DATASETS = sorted(list(set([f.stem.split('_')[0] for f in INPUT_DIR.glob('*.csv')])))
+ATTACK_MODES = ["homoglyph", "diacritic", "mixed", "emoji", "humanizer_bert", "humanizer_roberta"]
 
 # ---------------------------
 # HuggingFace Models

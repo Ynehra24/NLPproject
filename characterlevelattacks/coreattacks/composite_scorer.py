@@ -116,7 +116,28 @@ def gpt2_analyze(text: str, max_length: int = 512) -> dict:
 
 def cosine_score(original: str, attacked: str) -> float:
     """SBERT cosine similarity (semantic preservation floor)."""
-    embs = SBERT.encode([original, attacked], convert_to_numpy=True)
+    import unicodedata
+    
+    # 1. Strip invisible Unicode characters
+    invisible = r'[\u200B\u200C\u200D\u00AD\u2060\uFEFF]'
+    clean_attacked = re.sub(invisible, '', attacked)
+    
+    # 2. Normalize and strip diacritics
+    clean_attacked = ''.join(c for c in unicodedata.normalize('NFKD', clean_attacked) if not unicodedata.combining(c))
+    
+    # 3. Reverse Cyrillic/Greek homoglyphs
+    homoglyphs = {
+        'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'х': 'x', 'у': 'y', 'і': 'i', 'ј': 'j', 'ѕ': 's',
+        'ԁ': 'd', 'ɡ': 'g', 'ո': 'n', 'υ': 'u', 'ν': 'v', 'ѡ': 'w', 'κ': 'k', 'ӏ': 'l', 'г': 'r', 'һ': 'h',
+        'м': 'm', 'ƒ': 'f', 'τ': 't', 'ƅ': 'b', 'ԛ': 'q', 'ʐ': 'z',
+        'А': 'A', 'В': 'B', 'С': 'C', 'Ꭰ': 'D', 'Е': 'E', 'Ƒ': 'F', 'Ԍ': 'G', 'Н': 'H', 'І': 'I', 'Ј': 'J',
+        'К': 'K', 'Ⅼ': 'L', 'М': 'M', 'Ν': 'N', 'О': 'O', 'Р': 'P', 'Ԛ': 'Q', 'Ʀ': 'R', 'Ѕ': 'S', 'Т': 'T',
+        'Ʋ': 'U', 'Ѵ': 'V', 'Ԝ': 'W', 'Х': 'X', 'Υ': 'Y', 'Ζ': 'Z'
+    }
+    for h, ascii_char in homoglyphs.items():
+        clean_attacked = clean_attacked.replace(h, ascii_char)
+    
+    embs = SBERT.encode([original, clean_attacked], convert_to_numpy=True)
     return float(cosine_similarity([embs[0]], [embs[1]])[0][0])
 
 

@@ -1,35 +1,5 @@
 """
-humanizer.py  —  v3  (Beat-Charmer Edition)
-============================================
-
-THE CRITICAL FIX FROM v2:
-  v2 used `classifier_fn = lambda t: "ai"` which means the CSBP beam search
-  NEVER checked whether attacks were actually fooling BERT/RoBERTa.  It just
-  optimised GPT-2 perplexity blindly for all K rounds.  This produced 0% ASR.
-
-v3 changes:
-  1. Wires the REAL TextAttack / HuggingFace classifier into CSBP via:
-       classifier_fn  — fn(text) → label string  (for misclassification check)
-       confidence_fn  — fn(text) → float         (P(original_label), for beam scoring)
-
-  2. build_classifier() constructs both functions from a HuggingFace pipeline.
-     Supports any model on the HuggingFace hub or a local path.
-
-  3. humanize() now accepts target_model and dataset parameters so you can
-     directly target the same model used in your evaluation CSV:
-       "textattack/bert-base-uncased-ag-news"    → AG-News BERT
-       "textattack/bert-base-uncased-SST-2"       → SST-2 BERT
-       "textattack/bert-base-uncased-QNLI"        → QNLI BERT
-       "textattack/bert-base-uncased-RTE"         → RTE BERT
-       "textattack/roberta-base-SST-2"            → SST-2 RoBERTa
-       "textattack/roberta-base-ag-news"          → AG-News RoBERTa
-
-  4. Fallback: if no target_model is specified, a statistical-only mode is used
-     (optimises GPT-2 perplexity + BPE disruption).  This is the v2 behaviour
-     and is kept for compatibility.
-
-  5. Fast-path evaluation: after the CSBP beam search finishes, humanize()
-     does a final check and reports whether the attack succeeded.
+humanizer.py - v3
 """
 
 import re
@@ -64,9 +34,7 @@ random.seed(42)
 np.random.seed(42)
 
 
-# ═══════════════════════════════════════════════════════════════
 # TextAttack Model Registry
-# ═══════════════════════════════════════════════════════════════
 # Maps (dataset, model_arch) → HuggingFace model ID.
 # These are the exact models used in Charmer's benchmark evaluation.
 
@@ -88,9 +56,7 @@ TEXTATTACK_MODELS = {
 }
 
 
-# ═══════════════════════════════════════════════════════════════
 # Classifier Builder
-# ═══════════════════════════════════════════════════════════════
 
 def build_classifier(
     model_name_or_path: str,
@@ -134,7 +100,7 @@ def build_classifier(
         """Return P(original_label | text) by finding the matching label."""
         try:
             outputs = pipe(text[:512], truncation=True,
-                           return_all_scores=True)[0]
+                           top_k=None)[0]
             # outputs is a list of {'label': ..., 'score': ...}
             # confidence_fn is called with the ORIGINAL label, so we need
             # to cache it.  We return the score of whichever label the
@@ -165,7 +131,7 @@ def build_confidence_for_label(
     def confidence_fn(text: str) -> float:
         try:
             outputs = pipe(text[:512], truncation=True,
-                           return_all_scores=True)[0]
+                           top_k=None)[0]
             for entry in outputs:
                 if entry['label'] == original_label:
                     return float(entry['score'])
@@ -177,9 +143,7 @@ def build_confidence_for_label(
     return confidence_fn
 
 
-# ═══════════════════════════════════════════════════════════════
 # Formality & Emoji Support
-# ═══════════════════════════════════════════════════════════════
 
 FORMALITY_DIR = CORE_DIR / "formality_model"
 
@@ -245,9 +209,7 @@ def strip_emojis(text: str) -> str:
     return ''.join(ch for ch in text if ch not in emoji.EMOJI_DATA).strip()
 
 
-# ═══════════════════════════════════════════════════════════════
 # Main humanize() Function
-# ═══════════════════════════════════════════════════════════════
 
 import transformers
 
@@ -302,7 +264,14 @@ def humanize(
     if target_model is not None and _clf_fn is None:
         global _GLOBAL_CLF_PIPES
         from transformers import pipeline as hf_pipeline
-        dev = 0 if (torch.cuda.is_available() and device_override != 'cpu') else -1
+        if device_override == 'cpu':
+            dev = -1
+        elif torch.cuda.is_available():
+            dev = 0
+        elif torch.backends.mps.is_available():
+            dev = "mps"
+        else:
+            dev = -1
         
         if target_model not in _GLOBAL_CLF_PIPES:
             print(f"[humanize] Loading target model: {target_model}  device={dev}")
@@ -312,10 +281,10 @@ def humanize(
                 device=dev,
                 truncation=True,
                 max_length=512,
-                return_all_scores=True,
+                top_k=None,
             )
         _pipe = _GLOBAL_CLF_PIPES[target_model]
-        _clf_fn = lambda t: _pipe(t[:512], truncation=True, return_all_scores=False)[0]['label']
+        _clf_fn = lambda t: _pipe(t[:512], truncation=True, top_k=1)[0]['label']
 
     # ── Get original prediction ────────────────────────────────────
     if _clf_fn is not None:
@@ -378,9 +347,7 @@ def humanize(
     }
 
 
-# ═══════════════════════════════════════════════════════════════
-# Batch Evaluation Helper (for generating your evaluation CSV)
-# ═══════════════════════════════════════════════════════════════
+# Batch Evaluation Helper
 
 def run_evaluation_batch(
     texts:        List[str],
@@ -412,16 +379,23 @@ def run_evaluation_batch(
         texts = random.sample(texts, n_samples)
 
     from transformers import pipeline as hf_pipeline
-    dev = 0 if (torch.cuda.is_available() and device != 'cpu') else -1
+    if device == 'cpu':
+        dev = -1
+    elif torch.cuda.is_available():
+        dev = 0
+    elif torch.backends.mps.is_available():
+        dev = "mps"
+    else:
+        dev = -1
     pipe = hf_pipeline(
         "text-classification",
         model=target_model,
         device=dev,
         truncation=True,
         max_length=512,
-        return_all_scores=True,
+        top_k=None,
     )
-    clf_fn = lambda t: pipe(t[:512], truncation=True, return_all_scores=False)[0]['label']
+    clf_fn = lambda t: pipe(t[:512], truncation=True, top_k=1)[0]['label']
 
     successes = 0
     rows = []
@@ -473,9 +447,7 @@ def run_evaluation_batch(
     return {'asr': asr, 'successes': successes, 'total': len(texts), 'rows': rows}
 
 
-# ═══════════════════════════════════════════════════════════════
-# File/Dataset Loading (unchanged from v2 — kept for compatibility)
-# ═══════════════════════════════════════════════════════════════
+# File/Dataset Loading
 
 def _coerce_text_value(v) -> str:
     if v is None:
@@ -536,9 +508,7 @@ def load_texts_from_file(path: Path, text_col_candidates: Optional[List[str]] = 
         return [ln.strip() for ln in fh if ln.strip()]
 
 
-# ═══════════════════════════════════════════════════════════════
 # CLI
-# ═══════════════════════════════════════════════════════════════
 
 def main():
     import argparse

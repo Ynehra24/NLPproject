@@ -1,27 +1,5 @@
 """
-CSBP v3 – Evasion-Oriented Beam Search  (Beat-Charmer Edition)
-==============================================================
-
-Changes from v2:
-  1. classifier_fn now receives the REAL BERT/RoBERTa model (not lambda).
-     misclassifies() actually checks the target model → beam search now
-     terminates correctly when an attack succeeds.
-
-  2. New 'blitz' strategy: applies homoglyph + diacritic + ZWSP at
-     rate 1.0 on every eligible word simultaneously.  Weighted 4×.
-
-  3. New 'zwsp_flood' strategy: inserts ZWSP at EVERY character boundary
-     in high-confidence words.  Shatters BPE completely.
-
-  4. generate_candidates() now passes classifier_fn to composite_score()
-     so the scorer directly measures classifier confidence reduction,
-     making the beam search goal-aligned with the actual attack target.
-
-  5. Beam width default raised 5 → 8.  Candidates per round default
-     raised 10 → 16.  Both give more exploration without memory issues.
-
-  6. Iterative inference loop now queries the REAL classifier each round
-     instead of re-feeding to the dummy.  First misclassification → stop.
+CSBP v3 – Evasion-Oriented Beam Search
 """
 
 import random
@@ -84,25 +62,20 @@ def _weighted_sample(
     already:     frozenset,       # word indices already perturbed this beam
     n:           int,
 ) -> List[int]:
-    """
-    Sample `n` word indices from `eligible` weighted by sensitivity.
-    Words in `already` (already perturbed this beam) are down-weighted
-    30× so the beam preferentially attacks fresh words each round.
-    """
-    if not eligible:
+    unperturbed = [i for i in eligible if i not in already]
+    if not unperturbed:
         return []
-    REPEAT_PENALTY = 0.033    # 1/30 of normal weight for already-perturbed words
-    weights = np.array([
-        sensitivity.get(i, 1.0) * (REPEAT_PENALTY if i in already else 1.0)
-        for i in eligible
-    ], dtype=float)
+        
+    weights = np.array([sensitivity.get(i, 1.0) for i in unperturbed], dtype=float)
     total = weights.sum()
-    if total < 1e-12:
-        weights = np.ones(len(eligible), dtype=float)
-    else:
+    
+    if total > 0:
         weights /= total
-    n_actual = min(n, len(eligible))
-    return list(np.random.choice(eligible, size=n_actual, replace=False, p=weights))
+    else:
+        weights = np.ones(len(unperturbed), dtype=float) / len(unperturbed)
+        
+    n_actual = min(n, len(unperturbed))
+    return list(np.random.choice(unperturbed, size=n_actual, replace=False, p=weights))
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -212,12 +185,6 @@ def insert_whitespace_attack_heavy(word: str) -> str:
 
 
 def zwsp_flood_word(word: str) -> str:
-    """
-    NEW: ZWSP FLOOD — insert ZWSP at EVERY character boundary.
-    This is the most extreme BPE shattering possible: a 6-letter word
-    becomes 11 tokens instead of 1.  Combined with homoglyph substitution
-    on available chars, the token IDs are also scrambled.
-    """
     result = apply_homoglyph(word, rate=1.0)  # swap all eligible chars first
     flooded = []
     for i, ch in enumerate(result):
@@ -254,13 +221,6 @@ def generate_candidates(
     classifier_fn:  Optional[Callable[[str], float]] = None,
     already_perturbed: frozenset = frozenset(),
 ) -> List[str]:
-    """
-    Generate n_candidates perturbations using targeted strategies.
-
-    already_perturbed : word indices already modified by this beam lineage.
-      These are down-weighted 30× in _weighted_sample so we attack fresh
-      words each round rather than re-hammering the same ones.
-    """
     candidates  = set()
     words       = text.split()
     max_idx     = len(words) - 1
@@ -389,9 +349,6 @@ class Beam:
     round_no:  int        = field(compare=False, default=0)
     history:   List[str]  = field(compare=False, default_factory=list)
     perturbed: frozenset  = field(compare=False, default_factory=frozenset)
-    """Word indices already modified in this beam lineage — passed to
-    generate_candidates() so the weighted sampler down-weights them and
-    preferentially attacks different words each round."""
 
     def __post_init__(self):
         self.history = self.history + [self.text]
@@ -417,29 +374,6 @@ def csbp_loop(
     score_weights:    Optional[dict] = None,
     verbose:          bool = True,
 ) -> dict:
-    """
-    CSBP v3 beam-search loop.
-
-    NEW PARAMETERS vs v2:
-      confidence_fn : fn(text) → float in [0,1], P(original_label | text).
-                      When provided, passed to composite_score() so the scorer
-                      directly optimises against the real classifier.
-                      Build this from your TextAttack/HuggingFace model.
-                      Example:
-                        pipeline = transformers.pipeline("text-classification",
-                                       model="textattack/bert-base-uncased-ag-news")
-                        confidence_fn = lambda t: [x['score'] for x in pipeline(t)
-                                            if x['label'] == original_label][0]
-
-      classifier_fn : fn(text) → label string (for misclassification check).
-                      Can be derived from confidence_fn:
-                        classifier_fn = lambda t: pipeline(t)[0]['label']
-
-    With both functions wired:
-      • Beam ranking is driven by 1-P(original_label) — goal-aligned
-      • Early stopping triggers the moment a real misclassification occurs
-      • No more 5-round wasted search after the attack already succeeded
-    """
     weights      = score_weights or {}
     beam_history = []
 
@@ -451,7 +385,7 @@ def csbp_loop(
               f"priority_words={len(analysis['priority_words'])}  "
               f"watermark_words={len(analysis['watermark_words'])}")
 
-    # ── Initialise beam ──
+    # Init beam
     init_score = composite_score(
         original_text, original_text,
         classifier_fn=confidence_fn,
@@ -488,7 +422,7 @@ def csbp_loop(
                 )
                 modified = new_changed | beam.perturbed
 
-                # ── Check real misclassification FIRST (fast path) ──
+                # Check misclassification
                 if misclassifies(cand_text, classifier_fn, original_label):
                     result = composite_score(
                         original_text, cand_text,
@@ -513,7 +447,7 @@ def csbp_loop(
                         'beam_history':    beam_history,
                     }
 
-                # ── Score for beam ranking ──
+                # Score beam ranking
                 result = composite_score(
                     original_text, cand_text,
                     classifier_fn=confidence_fn,
@@ -545,7 +479,7 @@ def csbp_loop(
             best_score  = top.score
             best_attack = top.text
 
-    # ── Exhausted rounds without success ──
+    # Max rounds reached
     final = composite_score(
         original_text,
         best_attack or original_text,
@@ -597,9 +531,7 @@ def run_csbp_batch(
     return results
 
 
-# ═══════════════════════════════════════════════════════════════
-# Demo  (uses dummy classifier for illustration only)
-# ═══════════════════════════════════════════════════════════════
+# Demo tests
 
 if __name__ == "__main__":
 

@@ -17,7 +17,7 @@ model.eval()
 
 # Load 10 unattacked texts from the existing humanizer CSV (original_text column)
 print("Loading 10 samples from agnews_humanizer.csv...")
-df = pd.read_csv("/Users/yatharthnehva/NLPproject/characterlevelattacks/coreattacks/attacked_outputs/agnews_humanizer.csv").head(10)
+df = pd.read_csv("/Users/yatharthnehva/NLPproject/characterlevelattacks/coreattacks/attacked_outputs/agnews_humanizer_bert.csv")
 
 successes = 0
 total = 0
