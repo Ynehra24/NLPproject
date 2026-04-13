@@ -1,32 +1,3 @@
-"""
-Evasion-Oriented Composite Scorer  (v3 — Beat-Charmer Edition)
-==============================================================
-
-Changes from v2:
-  1. Weights rebalanced:
-       w_evasion    0.55 → 0.35   (GPT-2 stats matter less than real classifier)
-       w_bpe        0.15 → 0.35   (BPE disruption is the primary attack vector)
-       w_watermark  0.15 → 0.10
-       w_readability 0.05 → 0.05
-       w_similarity  0.10 → 0.15  (keep meaning so human readers aren't suspicious)
-
-  2. bpe_disruption_score() — now counts BOTH token inflation AND invisible-char
-     density, giving a higher score to texts with ZWSP/ZWNJ inserted.
-
-  3. coherence_gate() threshold lowered 0.20 → 0.10.
-     Invisible-char attacks reduce SBERT cosine because SBERT's own tokeniser
-     also fragments on ZWSP; the semantic meaning is preserved for human readers.
-     The old 0.20 gate was suppressing our best candidates.
-
-  4. readability_score() — treats PPL 30-10 000 as full score.
-     The old cap at 5 000 was penalising heavy ZWSP-attacked text unfairly.
-
-  5. New: classifier_score() hook — optional.  If a real BERT/RoBERTa
-     classifier is provided, its confidence (inverted) replaces evasion_score()
-     as the primary optimisation signal.  This is what the humanizer uses to
-     actually beat the target model.
-"""
-
 import re
 import math
 import hashlib
@@ -115,38 +86,45 @@ def gpt2_analyze(text: str, max_length: int = 512) -> dict:
 # ═══════════════════════════════════════════════════════════════
 
 def cosine_score(original: str, attacked: str) -> float:
-    """SBERT cosine similarity (semantic preservation floor)."""
-    # [V3 Update] We no longer clean the string (no stripping invisibles)
-    # We want SBERT to ACTUALLY read the diacritics, emojis, and ZWSPs
-    # so that the Cosine Score drops realistically into the ~0.85-0.90 range
+    """SBERT cosine similarity — full cleaning pipeline.
     
-    embs = SBERT.encode([original, attacked], convert_to_numpy=True)
+    Strips invisible chars, diacritics, and reverses homoglyphs before SBERT
+    encodes. Ensures Cosine reflects true semantic similarity, not tokenizer
+    fragmentation from ZWSPs. Consistent with paper's hard gate of >=0.90.
+    """
+    import unicodedata
+
+    # 1. Strip invisible Unicode characters (ZWSP, ZWNJ etc.)
+    invisible = r'[\u200B\u200C\u200D\u00AD\u2060\uFEFF]'
+    clean = re.sub(invisible, '', attacked)
+
+    # 2. Normalize and strip diacritics
+    clean = ''.join(c for c in unicodedata.normalize('NFKD', clean)
+                    if not unicodedata.combining(c))
+
+    # 3. Reverse Cyrillic/Greek homoglyphs back to Latin
+    homoglyphs = {
+        'а': 'a', 'е': 'e', 'о': 'o', 'р': 'p', 'с': 'c', 'х': 'x', 'у': 'y', 'і': 'i', 'ј': 'j', 'ѕ': 's',
+        'ԁ': 'd', 'ɡ': 'g', 'ո': 'n', 'υ': 'u', 'ν': 'v', 'ѡ': 'w', 'κ': 'k', 'ӏ': 'l', 'г': 'r', 'һ': 'h',
+        'м': 'm', 'ƒ': 'f', 'τ': 't', 'ƅ': 'b', 'ԛ': 'q', 'ʐ': 'z',
+        'А': 'A', 'В': 'B', 'С': 'C', 'Ꭰ': 'D', 'Е': 'E', 'Ƒ': 'F', 'Ԍ': 'G', 'Н': 'H', 'І': 'I', 'Ј': 'J',
+        'К': 'K', 'Ⅼ': 'L', 'М': 'M', 'Ν': 'N', 'О': 'O', 'Р': 'P', 'Ԛ': 'Q', 'Ʀ': 'R', 'Ѕ': 'S', 'Т': 'T',
+        'Ʋ': 'U', 'Ѵ': 'V', 'Ԝ': 'W', 'Х': 'X', 'Υ': 'Y', 'Ζ': 'Z'
+    }
+    for h, asc in homoglyphs.items():
+        clean = clean.replace(h, asc)
+
+    embs = SBERT.encode([original, clean], convert_to_numpy=True)
     return float(cosine_similarity([embs[0]], [embs[1]])[0][0])
 
 
 def evasion_score(ppl: float, avg_rank: float) -> float:
-    """
-    How well the text evades STATISTICAL detectors (GPT-2 perplexity / rank).
-    This is a secondary signal — the real classifier check happens via
-    classifier_score() when a model is wired in.
-
-    Reference ranges (GPT-2 on English):
-        AI-generated :  PPL ≈ 15-50,   avg rank ≈ 3-15
-        Human-written:  PPL ≈ 60-250,  avg rank ≈ 30-200+
-    """
     ppl_comp  = 1.0 / (1.0 + math.exp(-(ppl - 60) / 30))
     rank_comp = 1.0 / (1.0 + math.exp(-(avg_rank - 25) / 15))
     return 0.65 * ppl_comp + 0.35 * rank_comp
 
 
 def bpe_disruption_score(original: str, attacked: str) -> float:
-    """
-    v3: combines token-count inflation with invisible-char density.
-
-    Token inflation: attacked/original token ratio above 1.0.
-    Invisible density: fraction of chars that are ZWSP/ZWNJ etc.
-    Both are signals that BPE tokenisation has been shattered.
-    """
     INVISIBLE = {'\u200B', '\u200C', '\u200D', '\u00AD', '\u2060', '\uFEFF'}
 
     orig_n   = len(GPT2_TOKENIZER.encode(original,  add_special_tokens=False))
@@ -189,12 +167,6 @@ def watermark_evasion(z: float) -> float:
 
 
 def readability_score(ppl: float) -> float:
-    """
-    v3: reward any PPL above 30 fully.  Cap decay starts at 10 000.
-    Heavy ZWSP attacks legitimately push PPL into 500-3000 range on
-    GPT-2 while remaining perfectly readable to humans.  The old 5 000
-    cap was wrongly penalising our best outputs.
-    """
     if ppl < 30:
         # suspiciously smooth — still AI-like to statistical detectors
         return 0.2 + 0.8 * (ppl / 30)
@@ -205,14 +177,6 @@ def readability_score(ppl: float) -> float:
 
 
 def coherence_gate(cosine: float, min_thresh: float = 0.10) -> float:
-    """
-    v3: threshold lowered to 0.10 (was 0.20).
-
-    Invisible-char attacks (ZWSP) cause SBERT to score lower cosine
-    because SBERT's own SentencePiece tokeniser also fragments on ZWSP.
-    The semantic content is unchanged for human readers.
-    We only discard true gibberish (cosine < 0.10).
-    """
     if cosine >= min_thresh:
         return 1.0
     if cosine <= 0.0:
@@ -225,23 +189,10 @@ def classifier_score(
     original_label: str,
     classifier_fn: Optional[Callable[[str], float]],
 ) -> float:
-    """
-    v3 NEW: If a real classifier confidence function is wired in, return
-    1 - P(original_label | attacked_text).  This directly measures how much
-    the attack has reduced the classifier's confidence.
-
-    classifier_fn should return a float in [0, 1] representing the
-    model's confidence that the text belongs to original_label.
-
-    If no classifier is provided, returns 0.5 (neutral — use evasion_score
-    as primary signal instead).
-    """
     if classifier_fn is None:
         return 0.5
     try:
         confidence = classifier_fn(attacked)
-        # confidence is P(original_label) — we want to MINIMIZE this,
-        # so the score is 1 - confidence (higher = more evaded)
         return float(np.clip(1.0 - confidence, 0.0, 1.0))
     except Exception:
         return 0.5
@@ -264,19 +215,6 @@ def composite_score(
     w_readability: float = 0.05,
     w_similarity:  float = 0.15,
 ) -> dict:
-    """
-    Evasion-oriented composite score.   Higher S = better attack candidate.
-
-    When classifier_fn is provided:
-      • w_classifier is set to 0.45 and w_evasion is reduced to 0.10
-      • The classifier's confidence becomes the primary signal
-      • This is the mode that directly optimises against BERT/RoBERTa
-
-    Without classifier_fn:
-      • BPE disruption (0.35) + statistical evasion (0.35) drive search
-      • This is blind mode — still effective because ZWSP and homoglyphs
-        derail the classifier's token embeddings even without querying it
-    """
     # ── GPT-2 analysis ──
     analysis = gpt2_analyze(attacked)
     ppl      = analysis['ppl']
@@ -294,13 +232,14 @@ def composite_score(
 
     # ── Adjust weights when real classifier is available ──
     if classifier_fn is not None:
-        # Classifier confidence priority tuned to 0.63 for higher ASR
-        _w_clf  = 0.63
-        _w_sim  = 0.13
-        _w_bpe  = 0.12
-        _w_read = 0.06
-        _w_ev   = 0.06
-        _w_wm   = 0.00
+        # Classifier confidence is the ground truth — prioritise it
+        # while still preserving readability (paper-consistent weights)
+        _w_clf  = 0.45
+        _w_ev   = 0.10
+        _w_bpe  = 0.25
+        _w_wm   = 0.08
+        _w_read = 0.04
+        _w_sim  = 0.08
     else:
         _w_clf  = 0.00
         _w_ev   = w_evasion
@@ -379,9 +318,6 @@ def analyze_original(text: str) -> dict:
     priority_words  = {t2w[t] for t in hi_conf   if t in t2w}
     watermark_words = {t2w[t] for t in green_tok  if t in t2w}
 
-    # ── Per-word average GPT-2 token rank ────────────────────────────────────
-    # Lower avg rank = GPT-2 more confident on this word = higher AI signal
-    # → invert to a sensitivity weight so beam search attacks these first.
     word_rank_accum: dict = {}
     for tok_idx, rk in enumerate(analysis['ranks']):
         w = t2w.get(tok_idx + 1)       # ranks align to positions 1..n

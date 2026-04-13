@@ -45,21 +45,20 @@ STRATEGIES = [
     'scorched_earth', 'scorched_earth', 'scorched_earth',
     'blitz',          'blitz',          'blitz',          'blitz',
     'zwsp_flood',     'zwsp_flood',     'zwsp_flood',     'zwsp_flood',
+    'roberta_subword', 'roberta_subword', 'roberta_subword', 'roberta_subword',
+    'micro_sponge',   'micro_sponge',
+    'punctuation_bind', 'punctuation_bind',
+    'random_case',    'random_case',
+    'math_unicode',   'math_unicode',
+    'fullwidth',
 ]
 
-# Words shorter than this skip heavy attacks (homoglyph/scorched-earth/blitz)
-# and only receive ZWSP insertion.  Avoids wasting budget on "a", "the", "of".
 MIN_WORD_LEN_HEAVY = 3
-
-
-# ═══════════════════════════════════════════════════════════════
-# Sensitivity-weighted word sampler
-# ═══════════════════════════════════════════════════════════════
 
 def _weighted_sample(
     eligible:    List[int],
-    sensitivity: dict,            # word_idx → weight (higher = attack first)
-    already:     frozenset,       # word indices already perturbed this beam
+    sensitivity: dict,            
+    already:     frozenset,       
     n:           int,
 ) -> List[int]:
     unperturbed = [i for i in eligible if i not in already]
@@ -77,10 +76,6 @@ def _weighted_sample(
     n_actual = min(n, len(unperturbed))
     return list(np.random.choice(unperturbed, size=n_actual, replace=False, p=weights))
 
-
-# ═══════════════════════════════════════════════════════════════
-# BPE Vulnerability Analysis
-# ═══════════════════════════════════════════════════════════════
 
 _BPE_VULN_CACHE: dict = {}
 
@@ -171,8 +166,19 @@ def insert_whitespace_attack(word: str) -> str:
     return ''.join(chars)
 
 
+def zwsp_shatter_word(word: str) -> str:
+    if len(word) <= 2:
+        return word
+    result = word[0]
+    breakers = [ZWSP, '\u200C', '\u200D']
+    for i, ch in enumerate(word[1:], 1):
+        if i % 3 == 0:  # Only every 3rd boundary
+            result += breakers[i % len(breakers)]
+        result += ch
+    return result
+
+
 def insert_whitespace_attack_heavy(word: str) -> str:
-    """Insert 3-5 invisible chars — used by scorched_earth."""
     if len(word) <= 1:
         return word
     chars    = list(word)
@@ -200,13 +206,75 @@ def attach_emoji(word: str) -> str:
 
 
 def scorched_earth_word(word: str) -> str:
-    """All attacks: homoglyph → diacritic → heavy ZWSP → optional emoji."""
     result = apply_homoglyph(word, rate=0.9)
     result = apply_diacritic(result, rate=0.7)   # diacritic stacks ZWSP automatically
     result = insert_whitespace_attack_heavy(result)
     if random.random() < 0.4:
         result = attach_emoji(result)
     return result
+
+def roberta_subword_word(word: str) -> str:
+    chars = list(word)
+    if len(chars) <= 3:
+        return word
+    
+    # Inject 1 to 3 internal ZWSPs depending on word length
+    n_injects = min(3, len(chars) // 2)
+    indices = random.sample(range(1, len(chars)), n_injects)
+    
+    for i in sorted(indices, reverse=True):
+        chars.insert(i, ZWSP)
+        
+    return apply_homoglyph(''.join(chars), rate=0.3)
+
+
+def apply_micro_sponge(text: str) -> str:
+    """Append 5 to 15 invisible BPE-breaking characters at the end of the sentence."""
+    sponge = "".join(random.choice(['\u200B', '\u200C', '\u200D']) for _ in range(random.randint(5, 15)))
+    return text + sponge
+
+
+def apply_punctuation_bind(text: str) -> str:
+    """Shatter token boundaries by injecting ZWSP before common trailing punctuation."""
+    new_text = text
+    for punc in ['.', ',', '!', '?', ';', ':']:
+        new_text = new_text.replace(punc, ZWSP + punc + ZWSP)
+    return new_text
+
+
+# ── Math Bold Unicode map: visually identical to Latin but 4-byte UTF-8 ──
+_MATH_BOLD_MAP: dict = {}
+for _i in range(26):
+    _MATH_BOLD_MAP[chr(ord('a') + _i)] = chr(0x1D41A + _i)   # 𝐚-𝐳
+    _MATH_BOLD_MAP[chr(ord('A') + _i)] = chr(0x1D400 + _i)   # 𝐀-𝐙
+
+
+def apply_random_case(word: str) -> str:
+    """Randomly flip character case on interior chars.
+    Creates novel byte sequences for RoBERTa's case-sensitive byte-BPE tokenizer."""
+    if len(word) <= 2:
+        return word
+    chars = [word[0]]  # keep first char as-is (less noticeable)
+    for ch in word[1:]:
+        if ch.isalpha():
+            chars.append(ch.upper() if random.random() < 0.5 else ch.lower())
+        else:
+            chars.append(ch)
+    return ''.join(chars)
+
+
+def apply_math_unicode(word: str) -> str:
+    return ''.join(_MATH_BOLD_MAP.get(ch, ch) for ch in word)
+
+
+def apply_fullwidth(word: str) -> str:
+    result = []
+    for ch in word:
+        if 0x21 <= ord(ch) <= 0x7E and ch.isalpha():
+            result.append(chr(ord(ch) - 0x21 + 0xFF01))
+        else:
+            result.append(ch)
+    return ''.join(result)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -220,6 +288,7 @@ def generate_candidates(
     n_candidates:   int  = 16,
     classifier_fn:  Optional[Callable[[str], float]] = None,
     already_perturbed: frozenset = frozenset(),
+    arch:           str  = 'bert',
 ) -> List[str]:
     candidates  = set()
     words       = text.split()
@@ -241,8 +310,17 @@ def generate_candidates(
     def sample(pool, n):
         return _weighted_sample(pool, sensitivity, already_perturbed, n)
 
+    pool_strategies = list(STRATEGIES)
+    if arch == 'roberta':
+        # Boost RoBERTa-specific byte-level OOD strategies
+        pool_strategies.extend([
+            'random_case',  'random_case',  'random_case',
+            'math_unicode', 'math_unicode',
+            'fullwidth',    'fullwidth',
+        ])
+
     for _ in range(n_candidates * 6):
-        strategy  = random.choice(STRATEGIES)
+        strategy  = random.choice(pool_strategies)
         new_words = list(words)
 
         # ── Strategy: BPE-break ────────────────────────────────────
@@ -329,6 +407,70 @@ def generate_candidates(
             for idx in sample(remaining, max(1, len(remaining) // 2)):
                 new_words[idx] = apply_blitz(words[idx])
 
+        # ── Strategy: ROBERTA SUBWORD ─────────────────────────────
+        elif strategy == 'roberta_subword':
+            # Target long words first (strongest BPE splits)
+            targets = [w for w in heavy_eligible if len(words[w]) > 5]
+            if not targets:
+                targets = heavy_eligible
+                
+            for idx in sample(targets, max(1, len(targets) // 2)):
+                new_words[idx] = roberta_subword_word(words[idx])
+
+        # ── Strategy: MICRO SPONGE ────────────────────────────────
+        elif strategy == 'micro_sponge':
+            if len(words) < 10:
+                # Target the last word specifically for the sponge
+                new_words[-1] = apply_micro_sponge(words[-1])
+            else:
+                for idx in sample(heavy_eligible, 1):
+                    new_words[idx] = apply_blitz(words[idx])
+
+        # ── Strategy: PUNCTUATION BIND ────────────────────────────
+        elif strategy == 'punctuation_bind':
+            if len(words) < 10:
+                punc_idx = [i for i, w in enumerate(words) if any(p in w for p in ['.', ',', '!', '?', ';', ':'])]
+                if punc_idx:
+                    for idx in punc_idx:
+                        new_words[idx] = apply_punctuation_bind(words[idx])
+                else:
+                    new_words[-1] = apply_micro_sponge(words[-1])
+            else:
+                for idx in sample(heavy_eligible, 1):
+                    new_words[idx] = apply_blitz(words[idx])
+
+        elif strategy == 'zwsp_dense':
+            # ALL content words get shattered — essential for short RTE texts
+            all_content = [i for i, w in enumerate(words)
+                           if len(w) >= MIN_WORD_LEN_HEAVY and w.isalpha()]
+            if not all_content:
+                all_content = list(range(len(words)))
+            # Shatter every selected word at every internal char boundary
+            for idx in all_content:
+                w = words[idx]
+                # Combo: aggressively apply homoglyphs to corrupt the actual byte-values
+                # BEFORE tearing them apart with ZWSP variants
+                w = apply_homoglyph_plus_zwsp(w, rate=0.7)
+                new_words[idx] = zwsp_shatter_word(w)
+
+        elif strategy == 'random_case':
+            # RoBERTa is case-sensitive: mixed case = novel byte sequences
+            targets = sample(heavy_eligible, max(1, len(heavy_eligible) // 2))
+            for idx in targets:
+                new_words[idx] = apply_random_case(words[idx])
+
+        elif strategy == 'math_unicode':
+            # Mathematical Bold Unicode: visually identical but 4-byte UTF-8 sequences
+            targets = sample(heavy_eligible, max(1, len(heavy_eligible) // 3))
+            for idx in targets:
+                new_words[idx] = apply_math_unicode(words[idx])
+
+        elif strategy == 'fullwidth':
+            # Fullwidth ASCII variants: 3-byte UTF-8 per char, OOD for RoBERTa BPE
+            targets = sample(heavy_eligible, max(1, len(heavy_eligible) // 3))
+            for idx in targets:
+                new_words[idx] = apply_fullwidth(words[idx])
+
         cand = ' '.join(new_words)
         if cand != text:
             candidates.add(cand)
@@ -358,6 +500,7 @@ def misclassifies(
     text:           str,
     classifier_fn:  Callable[[str], str],
     original_label: str,
+    confidence_fn:  Optional[Callable[[str], float]] = None,
 ) -> bool:
     """True if the classifier's LABEL prediction changed."""
     return classifier_fn(text) != original_label
@@ -371,8 +514,10 @@ def csbp_loop(
     K:                int  = 5,
     beam_width:       int  = 8,
     n_candidates:     int  = 16,
+    patience:         int  = 9,
     score_weights:    Optional[dict] = None,
     verbose:          bool = True,
+    arch:             str  = 'bert',   # 'bert' or 'roberta' — controls strategy pool
 ) -> dict:
     weights      = score_weights or {}
     beam_history = []
@@ -396,6 +541,10 @@ def csbp_loop(
 
     best_attack = None
     best_score  = -1.0
+    stagnation  = 0       # rounds without improvement
+    
+    # Dynamic patience based on model type (RoBERTa needs deeper search)
+    PATIENCE = patience
 
     for k in range(1, K + 1):
         if verbose:
@@ -410,6 +559,7 @@ def csbp_loop(
                 n_candidates,
                 classifier_fn=confidence_fn,
                 already_perturbed=beam.perturbed,
+                arch=arch,
             )
 
             for cand_text in cands:
@@ -423,7 +573,8 @@ def csbp_loop(
                 modified = new_changed | beam.perturbed
 
                 # Check misclassification
-                if misclassifies(cand_text, classifier_fn, original_label):
+                if misclassifies(cand_text, classifier_fn, original_label,
+                                 confidence_fn=confidence_fn):
                     result = composite_score(
                         original_text, cand_text,
                         classifier_fn=confidence_fn,
@@ -431,12 +582,35 @@ def csbp_loop(
                         **weights
                     )
                     S = result['S']
+                    cos = result['cosine']
+                    
+                    # ---- RTE / SHORT TEXT FIX ----
+                    # If the text is very short, modifying even 1 word drops cosine similarity steeply.
+                    # Relax the floor to 0.60 for texts under 45 words, but enforce 0.75 for < 10 words.
+                    num_words = len(original_text.split())
+                    if num_words < 10:
+                        bpe_floor = 0.6
+                    elif num_words > 45:
+                        bpe_floor = 0.85
+                    else:
+                        bpe_floor = 0.60
+
+                    if cos < bpe_floor:
+                        if verbose:
+                            print(f"  ✗ Flip rejected at round {k}: cos={cos:.4f} < {bpe_floor} floor")
+                        # Score it normally so it can still rank in the beam
+                        round_candidates.append(
+                            Beam(score=result['S'], text=cand_text,
+                                 round_no=k, history=beam.history,
+                                 perturbed=modified))
+                        continue
+
                     if verbose:
                         print(f"  \u2713 ATTACK SUCCEEDED at round {k}  S={S:.4f}")
                         print(f"    classifier_score={result['classifier']:.4f}  "
                               f"bpe={result['bpe_disruption']:.4f}  "
                               f"ppl={result['ppl']:.1f}  "
-                              f"cos={result['cosine']:.4f}")
+                              f"cos={cos:.4f}")
                         print(f"    {cand_text[:120]}")
                     return {
                         'success':         True,
@@ -478,6 +652,13 @@ def csbp_loop(
         if top.score > best_score:
             best_score  = top.score
             best_attack = top.text
+            stagnation  = 0
+        else:
+            stagnation += 1
+            if stagnation >= PATIENCE:
+                if verbose:
+                    print(f"  [Early stop] No improvement for {PATIENCE} rounds — giving up.")
+                break
 
     # Max rounds reached
     final = composite_score(

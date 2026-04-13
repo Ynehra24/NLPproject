@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path("/Users/yatharthnehva/NLPproject/characterlevelattac
 from composite_scorer import composite_score, analyze_original, gpt2_analyze
 from csbp_loop import csbp_loop, generate_candidates, scorched_earth_word
 from homoglyph_attack import apply_homoglyph, apply_diacritic, is_eligible
-from humanizer import humanize, get_register, ensure_support_models_loaded
+from humanizer import humanize, get_register, ensure_support_models_loaded, TEXTATTACK_MODELS
 
 # ---------------------------
 # Setup & Paths
@@ -24,26 +24,25 @@ INPUT_DIR = Path("/Users/yatharthnehva/NLPproject/characterlevelattacks/coreatta
 
 # Dynamically find all datasets that have been attacked (sst2, hc3, etc.)
 DATASETS = sorted(list(set([f.stem.split('_')[0] for f in INPUT_DIR.glob('*.csv')])))
-ATTACK_MODES = ["homoglyph", "diacritic", "mixed", "emoji", "humanizer_bert", "humanizer_roberta"]
-
-# ---------------------------
-# HuggingFace Models
-# ---------------------------
-MODELS = {
-    "BERT-base":    "textattack/bert-base-uncased-imdb",
-    "RoBERTa-base": "textattack/roberta-base-imdb"
-}
+ATTACK_MODES = ["humanizer_bert", "humanizer_roberta"]
 
 # ---------------------------
 # Batch Inference Helper
 # ---------------------------
-def predict_batch(texts: list, tokenizer, model, batch_size: int = 64) -> list:
+def predict_batch(texts: list, premises: list, tokenizer, model, batch_size: int = 64) -> list:
     """Runs fast batched inference on MPS/GPU."""
     preds = []
     for i in tqdm(range(0, len(texts), batch_size), desc="  Predicting", leave=False):
         batch = texts[i : i + batch_size]
         batch = [t if isinstance(t, str) and t.strip() else " " for t in batch]
-        enc = tokenizer(batch, return_tensors='pt', padding=True, truncation=True, max_length=128)
+        
+        if premises:
+            batch_premises = premises[i : i + batch_size]
+            batch_premises = [p if isinstance(p, str) and p.strip() else " " for p in batch_premises]
+            enc = tokenizer(text=batch_premises, text_pair=batch, return_tensors='pt', padding=True, truncation=True, max_length=512)
+        else:
+            enc = tokenizer(text=batch, return_tensors='pt', padding=True, truncation=True, max_length=512)
+            
         enc = {k: v.to(device) for k, v in enc.items()}
         with torch.no_grad():
             logits = model(**enc).logits
@@ -56,17 +55,26 @@ def predict_batch(texts: list, tokenizer, model, batch_size: int = 64) -> list:
 def evaluate_all():
     summary_results = []
 
-    for model_name, model_id in MODELS.items():
-        print(f"\n{'='*40}")
-        print(f" Loading Detector: {model_name}")
-        print(f"{'='*40}")
-
-        tokenizer = AutoTokenizer.from_pretrained(model_id)
-        model = AutoModelForSequenceClassification.from_pretrained(model_id).to(device)
-        model.eval()
-
+    for arch in ["bert", "roberta"]:
         for dataset in DATASETS:
+            key = (dataset, arch)
+            if key not in TEXTATTACK_MODELS:
+                continue
+                
+            model_id = TEXTATTACK_MODELS[key]
+            print(f"\n{'='*40}")
+            print(f" Loading Detector: {model_id} for {dataset.upper()} ({arch.upper()})")
+            print(f"{'='*40}")
+
+            tokenizer = AutoTokenizer.from_pretrained(model_id)
+            model = AutoModelForSequenceClassification.from_pretrained(model_id).to(device)
+            model.eval()
+
             for mode in ATTACK_MODES:
+                # Only use the humanizer branch corresponding to the current arch
+                if mode != f"humanizer_{arch}":
+                    continue
+                    
                 csv_path = INPUT_DIR / f"{dataset}_{mode}.csv"
                 if not csv_path.exists():
                     continue
@@ -87,6 +95,7 @@ def evaluate_all():
 
                 orig_texts = df[orig_col].tolist()
                 raw_attk_texts = df[attk_col].tolist()
+                premises = df['premise'].tolist() if 'premise' in df.columns else None
 
                 attk_texts = []
                 import ast
@@ -102,10 +111,10 @@ def evaluate_all():
                         attk_texts.append(str(raw))
 
                 # 1. Predictions on original texts
-                orig_preds = predict_batch(orig_texts, tokenizer, model)
+                orig_preds = predict_batch(orig_texts, premises, tokenizer, model)
 
                 # 2. Predictions on humanized texts
-                attk_preds = predict_batch(attk_texts, tokenizer, model)
+                attk_preds = predict_batch(attk_texts, premises, tokenizer, model)
 
                 # 3. Compute ASR + v2 composite score breakdown
                 successes = []
@@ -152,7 +161,7 @@ def evaluate_all():
                 print(f"  -> Avg Rank     : {avg_rank:.1f}")
 
                 summary_results.append({
-                    "Detector":        model_name,
+                    "Detector":        arch.upper(),
                     "Dataset":         dataset.upper(),
                     "Mode":            mode,
                     "Total":           total_evaluated,
@@ -166,14 +175,14 @@ def evaluate_all():
                     "Avg PPL":         round(avg_ppl, 2),
                     "Avg Rank":        round(avg_rank, 2),
                 })
-
-        # Free up memory before next detector
-        del model
-        del tokenizer
-        import gc
-        gc.collect()
-        if torch.backends.mps.is_available():
-            torch.mps.empty_cache()
+            
+            # Free up memory before next dataset/model
+            del model
+            del tokenizer
+            import gc
+            gc.collect()
+            if torch.backends.mps.is_available():
+                torch.mps.empty_cache()
 
     # Print & save summary
     print("\n\n" + "="*60)
@@ -183,6 +192,16 @@ def evaluate_all():
     print(summary_df.to_string(index=False))
 
     out_path = INPUT_DIR / "final_evaluation_metrics.csv"
+    if out_path.exists():
+        try:
+            existing_df = pd.read_csv(out_path)
+            # Remove the old rows for the modes we just evaluated to avoid duplicates
+            existing_df = existing_df[~existing_df['Mode'].isin(ATTACK_MODES)]
+            # Merge existing rows with newly evaluated rows
+            summary_df = pd.concat([existing_df, summary_df], ignore_index=True)
+        except Exception as e:
+            print(f"Could not read existing CSV for merge: {e}")
+            
     summary_df.to_csv(out_path, index=False)
     print(f"\nMetrics saved to: {out_path}")
 
