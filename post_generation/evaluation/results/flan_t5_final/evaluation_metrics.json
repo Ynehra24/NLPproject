@@ -1,0 +1,17 @@
+{
+  "model": "flan_t5_base_evader",
+  "test_samples": 50,
+  "ai_samples": 27,
+  "human_samples": 23,
+  "detectors": {
+    "RoBERTa": {
+      "auc_roc": 0.5,
+      "accuracy": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "tnr": 0.0,
+      "evasion_rate": 0.0,
+      "error": "Insufficient class variance"
+    }
+  }
+}
