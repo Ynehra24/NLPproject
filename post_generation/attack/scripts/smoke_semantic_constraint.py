@@ -1,8 +1,13 @@
 import argparse
 import json
 import os
-import sys
-from pathlib import Path
+
+try:
+    from post_generation.core.runtime import ensure_post_generation_paths
+except ModuleNotFoundError:
+    from core.runtime import ensure_post_generation_paths
+
+ensure_post_generation_paths(__file__)
 
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -130,11 +135,6 @@ def _fallback_score_without_textattack(args) -> dict:
 
 def main():
     args = parse_args()
-
-    project_root = Path(__file__).resolve().parents[2]
-    project_root_str = str(project_root)
-    if project_root_str not in sys.path:
-        sys.path.insert(0, project_root_str)
 
     _set_env_if_value("HMGC_SEMANTIC_MODEL", args.semantic_model_name)
     _set_env_if_value("HMGC_SEMANTIC_THRESHOLD", args.semantic_threshold)

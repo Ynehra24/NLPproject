@@ -1,9 +1,7 @@
-import os
+import argparse
 import json
 import logging
-import argparse
-import sys
-from pathlib import Path
+import os
 import torch.multiprocessing as mp
 mp.set_start_method("spawn", force=True)
 
@@ -15,16 +13,20 @@ except ImportError:
 from tqdm import tqdm
 from datetime import datetime
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
+try:
+    from post_generation.core.logging_utils import setup_logger
+    from post_generation.core.runtime import ensure_post_generation_paths
+except ModuleNotFoundError:
+    from core.logging_utils import setup_logger
+    from core.runtime import ensure_post_generation_paths
+
+PROJECT_ROOT = ensure_post_generation_paths(__file__)
 
 from textflint.adapter import auto_dataset
 from textattack.shared import AttackedText
 from textattack.goal_function_results import GoalFunctionResultStatus
 
 from attack.methods.models import SurrogateDetectionModel
-from utils.conf_util import setup_logger
 
 
 attacking = None

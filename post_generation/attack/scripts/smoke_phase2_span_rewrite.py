@@ -1,8 +1,13 @@
 import argparse
 import json
 import os
-import sys
-from pathlib import Path
+
+try:
+    from post_generation.core.runtime import ensure_post_generation_paths
+except ModuleNotFoundError:
+    from core.runtime import ensure_post_generation_paths
+
+ensure_post_generation_paths(__file__)
 
 
 def parse_args():
@@ -127,11 +132,6 @@ def _validate_and_get_span(args, attacked_text):
 
 def main():
     args = parse_args()
-
-    project_root = Path(__file__).resolve().parents[2]
-    project_root_str = str(project_root)
-    if project_root_str not in sys.path:
-        sys.path.insert(0, project_root_str)
 
     if args.device is not None:
         os.environ["TA_DEVICE"] = args.device
