@@ -61,3 +61,6 @@ post_generation/Paper.pdf
 
 # Teammate attack input files
 paired_long_*.csv
+
+results/
+gradientBasedAttacks/results/
