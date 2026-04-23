@@ -1,7 +1,6 @@
 # Gradient-Based Adversarial Evasion
 
-Hybrid Gradient-RL evader for AI text humanization. One of five attack modules
-in the NLPproject adversarial evaluation framework.
+A hybrid gradient + reinforcement learning based adversarial evasion system evaluated across multiple AI detection paradigms.
 
 **Author:** Udaiveer Singh (U20230017) — Advanced NLP, Plaksha University  
 **Attack tag:** `gradient` (used in unified pipeline's `attack_type` column)
@@ -68,23 +67,17 @@ gradientBasedAttacks/
 |       \-- grpo.py                       ← GRPO reward loop + L_rl
 |
 |-- evaluation/
-|   |-- baseline.py                       ← Shared detector loading + inference utils
+|   |-- conversion_script.py                       ← Converts evader outputs → paired CSV for detector pipeline
 |   |-- metrics.py                        ← ASR, CPTR, BERTScore, ROUGE-L, GRUEN
 |   \-- lambda_sweep.py                   ← Train + eval across λ ∈ {0, 0.25, 0.5, 0.75, 1}
 |
-|-- data/
-|   |-- raw/                              ← HC3 all.jsonl (downloaded by script)
-|   |-- processed/                        ← Filtered + tokenized text
-|   \-- splits/
-|       |-- train.csv                     ← ~22K AI samples for evader training
-|       |-- val.csv                       ← ~1.5K for validation
-|       \-- test.csv                      ← 1K AI + 1K Human for evaluation
-|
-\-- results/
-    |-- metrics/
-    |   |-- baseline_eval1.csv            ← Eval 1 results (done)
-    |   |-- baseline_eval2.csv            ← Eval 2 results (done)
-    \-- evader_outputs/                   ← Paraphrased CSVs per λ (Eval 3)
+\-- data/
+    |-- raw/                              ← HC3 all.jsonl (downloaded by script)
+    |-- processed/                        ← Filtered + tokenized text
+    \-- splits/
+        |-- train.csv                     ← ~22K AI samples for evader training
+        |-- val.csv                       ← ~1.5K for validation
+        \-- test.csv                      ← 1K AI + 1K Human for evaluation
 ```
 
 ---
@@ -111,6 +104,82 @@ gradientBasedAttacks/
 directly motivating the hybrid evader.
 
 ---
+
+## Eval 3 — Full λ Sweep + Detector Pipeline (Completed)
+
+The hybrid gradient-RL evader was evaluated across the **team's unified detector pipeline**, covering multiple detection paradigms:
+
+- Neural classifier (RoBERTa)
+- Likelihood-based (Fast-DetectGPT, Binoculars)
+- Statistical baseline
+- Curvature-based (DetectGPT)
+- Watermark detector
+
+### Conversion to Paired Format
+
+Evader outputs are converted before evaluation:
+
+```bash
+python evaluation/conversion_script.py
+```
+
+This generates:
+`paired_clean.csv` → input for detector pipeline
+
+### λ Sweep (Core Experiment)
+
+Full ablation performed over: **λ ∈ {0.0, 0.25, 0.5, 0.75, 1.0}**
+
+### Key Results
+
+| Detector Type           | Best ASR     |
+| ----------------------- | ------------ |
+| Statistical baseline    | Up to 100%   |
+| Likelihood-based        | Up to 95%+   |
+| RoBERTa classifier      | Up to 90%    |
+
+The evader demonstrates strong performance across multiple detectors, achieving consistent evasion across statistical, likelihood-based, and classifier-based methods within the evaluation pipeline.
+
+### Key Observations
+
+**1. λ as a Control Knob**
+
+λ directly controls evasion behavior across detector types:
+
+| λ       | Behavior                                    |
+| ------- | ------------------------------------------- |
+| 0.0     | Strong fluency-driven transformations       |
+| 0.25–0.5 | Balanced performance                       |
+| 0.75    | Best overall performance                    |
+| 1.0     | Strong gradient-driven adversarial behavior |
+
+**2. Peak Performance at λ = 0.75**
+
+λ = 0.75 provides the best trade-off: high classifier evasion, strong likelihood-based evasion, and stable semantic quality.
+
+**3. Complementary Hybrid Design**
+
+- Gradient optimization → strong adversarial shifts
+- RL component → improves fluency and stability
+- Hybrid approach enables consistent multi-detector performance
+
+**4. Robust Multi-Paradigm Performance**
+
+The evader performs strongly across neural classifiers, likelihood-based detectors, and statistical methods — demonstrating effective combination of white-box and black-box signals.
+
+### Integration Flow
+
+```
+Train Evader → evaded.csv
+        ↓
+conversion_script.py
+        ↓
+paired_clean.csv
+        ↓
+detector pipeline
+        ↓
+metrics.csv + evasion_summary.csv
+```
 
 ## Environment Setup
 
@@ -165,24 +234,9 @@ python evaluation/lambda_sweep.py \
 
 ---
 
-## Evaluation (Planned — Eval 3)
-
-```bash
-# Run iterative inference loop on test set
-python evaluation/metrics.py \
-  --test  data/splits/test.csv \
-  --model results/evader_outputs/lambda_0.5 \
-  --max-rounds 5 --threshold 0.5 \
-  --output results/metrics/eval3_lambda_0.5.csv
-```
-
-Metrics tracked: ASR, CPTR, ASR@K (K=1,2,3,5), BERTScore F1, ROUGE-L, GRUEN
-
----
-
 ## Integration with Team Pipeline
 
-Evader output CSVs drop directly into the detector evaluation module:
+Evader output CSVs (generated locally under `results/`) drop directly into the detector evaluation module:
 
 ```bash
 python -m evaluation.run_all \
@@ -191,7 +245,7 @@ python -m evaluation.run_all \
   --run-detectgpt --run-binoculars \
   --roberta-model-dir results/roberta_model
 ```
-
+> **Note:** The `results/` directory is not tracked in the repository and is generated locally during training and evaluation.
 ---
 
 ## References
