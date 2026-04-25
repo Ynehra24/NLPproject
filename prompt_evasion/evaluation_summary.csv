@@ -1,0 +1,4 @@
+Method,Evasion Rate  (↑),Avg AI Score  (↓),BERTScore F1  (↑),Perplexity    (↓),FK Grade      (lower=easier),Persona Align (↑),KL-Div        (↓)
+original,0.00%,0.9992,0.0,9.17,11.7,0.9613,0.0387
+ours,80.00%,0.2035,0.9034,17.82,6.83,0.9411,0.0589
+sico,33.33%,0.6714,0.9101,14.83,7.83,0.9583,0.0417
