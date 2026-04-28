@@ -240,7 +240,7 @@ Evader output CSVs (generated locally under `results/`) drop directly into the d
 
 ```bash
 python -m evaluation.run_all \
-  --input ../gradientBasedAttacks/results/evader_outputs/lambda_0.5/evaded.csv \
+  --input ../gradientBasedAttacks/results/metrics/lambda_0.75/paired_clean.csv \
   --output-dir results/gradient_attack_scores \
   --run-detectgpt --run-binoculars \
   --roberta-model-dir results/roberta_model
