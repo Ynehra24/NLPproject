@@ -56,11 +56,12 @@ post_generation/**/*.pt
 post_generation/**/*.bin
 post_generation/**/*.ckpt
 post_generation/Paper.pdf
-# post_generation/evaluation/
-# post_generation/analysis/
 
 # Teammate attack input files
 paired_long_*.csv
-
-results/
-gradientBasedAttacks/results/
+*.csv
+*.docx
+*.txt
+edit_docx.py
+patch_docx.py
+txt_to_docx.py

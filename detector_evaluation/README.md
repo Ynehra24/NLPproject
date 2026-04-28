@@ -125,6 +125,43 @@ python -m evaluation.calibrate_thresholds
 
 Runs all 6 detectors on `val.csv`, finds the best-F1 threshold for each, and saves to `results/thresholds.json`. From this point on, every evaluation automatically uses these calibrated thresholds.
 
+### Optional: Generate KGW-Watermarked HC3 Variants
+
+KGW cannot learn anything useful from ordinary HC3 ChatGPT text because no watermark was embedded during generation. To create a KGW-positive dataset, generate local GPT-2 answers with the KGW sampler:
+
+```bash
+python -m evaluation.generate_watermarked_hc3 \
+  --n-prompts 150 \
+  --model-name gpt2 \
+  --max-new-tokens 80 \
+  --device cuda
+```
+
+This writes:
+
+```text
+data/raw/hc3_watermarked_kgw.csv
+data/splits/kgw_train.csv
+data/splits/kgw_val.csv
+data/splits/kgw_test.csv
+data/processed/hc3_watermarked_pairs.csv
+```
+
+Use `--gamma`, `--delta`, and `--hash-key` consistently between generation and detection. The default KGW detector settings match the generator defaults.
+
+Calibrate KGW on the watermarked validation split:
+
+```bash
+python -m detectors.watermark.score \
+  --input data/splits/kgw_val.csv \
+  --output results/kgw_watermarked_val_scores.csv \
+  --tokenizer-name gpt2 \
+  --gamma 0.5 \
+  --hash-key 15485863
+```
+
+The calibrated KGW threshold currently used in `results/thresholds.json` is `0.9375`. KGW is only meaningful for text generated with the KGW sampler; on ordinary non-watermarked ChatGPT/HC3 text, near-random KGW performance is expected.
+
 ---
 
 ## Phase 2 — Validate Your Implementation (Do Once)
@@ -172,7 +209,8 @@ python -m evaluation.run_paired_pipeline \
   --pairs-file teammate_pairs_charlevel.csv \
   --output-dir results/attack_eval_charlevel \
   --model-dir results/roberta_model \
-  --device cpu
+  --device cpu \
+  --thresholds-file results/thresholds.json
 ```
 
 If you receive multiple files from the same teammate:
@@ -182,7 +220,8 @@ python -m evaluation.run_paired_pipeline \
   --pairs-dir path/to/folder_with_csvs/ \
   --output-dir results/attack_eval_charlevel \
   --model-dir results/roberta_model \
-  --device cpu
+  --device cpu \
+  --thresholds-file results/thresholds.json
 ```
 
 ### What happens internally (6 automatic steps):
