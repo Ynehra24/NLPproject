@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
@@ -94,37 +95,58 @@ class WatermarkGenerator:
         self.model.eval()
         self.vocab_size = int(self.tokenizer.vocab_size)
 
-    def _green_list(self, prev_token_id: int) -> set[int]:
+    @lru_cache(maxsize=512)
+    def _green_list(self, prev_token_id: int) -> tuple[int, ...]:
         seed_bytes = f"{self.hash_key}_{prev_token_id}".encode("utf-8")
         seed = int(hashlib.sha256(seed_bytes).hexdigest(), 16) % (2**32)
         rng = np.random.RandomState(seed)
         n_green = int(self.vocab_size * self.gamma)
-        return set(rng.choice(self.vocab_size, size=n_green, replace=False).tolist())
+        return tuple(sorted(rng.choice(self.vocab_size, size=n_green, replace=False).tolist()))
 
     @torch.inference_mode()
-    def generate(self, prompt: str, max_new_tokens: int = 100, temperature: float = 1.0) -> str:
+    def generate(
+        self,
+        prompt: str,
+        max_new_tokens: int = 100,
+        temperature: float = 1.0,
+        return_full_text: bool = True,
+    ) -> str:
         input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(self.device)
+        prompt_len = int(input_ids.shape[1])
+        generated_ids = input_ids
+        next_input_ids = input_ids
+        past_key_values = None
 
         for _ in range(max_new_tokens):
-            logits = self.model(input_ids).logits[:, -1, :]
-            prev_tid = int(input_ids[0, -1].item())
+            outputs = self.model(
+                next_input_ids,
+                past_key_values=past_key_values,
+                use_cache=True,
+            )
+            past_key_values = outputs.past_key_values
+            logits = outputs.logits[:, -1, :]
+            prev_tid = int(generated_ids[0, -1].item())
             greens = self._green_list(prev_tid)
 
             bias = torch.zeros(self.vocab_size, device=self.device)
             if greens:
-                green_idx = torch.tensor(sorted(greens), dtype=torch.long, device=self.device)
+                green_idx = torch.tensor(greens, dtype=torch.long, device=self.device)
                 bias[green_idx] = self.delta
 
             step_logits = (logits + bias.unsqueeze(0)) / max(temperature, 1e-6)
             probs = torch.softmax(step_logits, dim=-1)
             next_token = torch.multinomial(probs, num_samples=1)
-            input_ids = torch.cat([input_ids, next_token], dim=-1)
+            generated_ids = torch.cat([generated_ids, next_token], dim=-1)
+            next_input_ids = next_token
 
             eos = self.tokenizer.eos_token_id
             if eos is not None and int(next_token.item()) == int(eos):
                 break
 
-        return self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
+        if not return_full_text:
+            new_ids = generated_ids[0, prompt_len:]
+            return self.tokenizer.decode(new_ids, skip_special_tokens=True)
+        return self.tokenizer.decode(generated_ids[0], skip_special_tokens=True)
 
 
 def parse_args() -> argparse.Namespace:
