@@ -62,18 +62,18 @@ Full results across all 12 evaluated configurations (BERT and RoBERTa, 6 dataset
 
 Comparison of leading character-level methods against CSBP v3. ASR is the primary metric; cos and PPL reported for CSBP only.
 
-| Dataset | DWB | TextBugger | Pruthi | Charmer-Fast | Charmer | **CSBP** | Charmer cos | **CSBP cos** | **CSBP PPL** | **CSBP BPE** |
+| Dataset | DWB | TextBugger | Pruthi | Charmer-Fast | Charmer | **CSBP(Ours)** | Charmer cos | **CSBP cos** | **CSBP PPL** | **CSBP BPE** |
 |---------|-----|------------|--------|--------------|---------|----------|-------------|--------------|--------------|--------------|
-| AG-News | 60.51 | 50.85 | 90.02 | 95.86 | 98.51 | **98.0** | 0.95 | **0.97** | 66.3 | 0.96 |
+| AG-News | 60.51 | 50.85 | 90.02 | 95.86 | 98.51 | **98.0** | 0.95 | **0.97**  | 66.3 | 0.96 |
 | QNLI | 71.57 | 75.77 | 17.70 | 94.69 | 97.68 | 86.0 | 0.94 | **0.99** | 133.7 | 0.93 |
-| RTE | 65.67 | 74.13 | 62.19 | 89.55 | 97.01 | 56.0 | 0.86 | **0.98** | 262.3 | 0.95 |
-| SST-2 | 81.39 | 68.49 | 90.94 | 100.00 | 100.00 | **98.0** | 0.90 | **0.93** | 126.8 | 0.96 |
+| RTE | 65.67 | 74.13 | 62.19 | 89.55 | 97.01 | 56.0 | 0.86 | **0.98** | 262.3  | 0.95 |
+| SST-2 | 81.39 | 68.49 | 90.94 | 100.00 | 100.00 | **98.0** | 0.90 | **0.93**  | 126.8 | 0.96 |
 | HC3 | — | — | — | — | — | **98.0** | — | **0.98** | 34.0 | 0.99 |
 | M4 | — | — | — | — | — | 82.0 | — | **0.99** | 45.9 | 0.79 |
 
 ### RoBERTa-base vs Paper (Character-Level Methods Only)
 
-| Dataset | DWB | TextBugger | Pruthi | Charmer-Fast | Charmer | **CSBP** | Charmer cos | **CSBP cos** | **CSBP PPL** | **CSBP BPE** |
+| Dataset | DWB | TextBugger | Pruthi | Charmer-Fast | Charmer | **CSBP(Ours)** | Charmer cos | **CSBP cos** | **CSBP PPL** | **CSBP BPE** |
 |---------|-----|------------|--------|--------------|---------|----------|-------------|--------------|--------------|--------------|
 | AG-News | 56.81 | 51.21 | 88.91 | 91.87 | 96.88 | **98.0** | 0.95 | **0.97** | 65.8 | 0.98 |
 | QNLI | 64.34 | 67.39 | 17.45 | 96.95 | 97.86 | **100.0** | 0.92 | **0.97** | 101.4 | 0.95 |
@@ -82,7 +82,7 @@ Comparison of leading character-level methods against CSBP v3. ASR is the primar
 | HC3 | — | — | — | — | — | **98.0** | — | **0.98** | 42.0 | 0.99 |
 | M4 | — | — | — | — | — | 82.0 | — | **0.99** | 43.7 | 0.78 |
 
-> **Note:** CSBP maintains notably higher semantic similarity (cos) than existing state-of-the-art across evaluated datasets, while achieving maximum fragmentation over BPE bounds. CSBP achieves 100% ASR on RoBERTa-QNLI — the only method to do so.
+> **Note:** Our CSBP variant maintains a notably higher semantic similarity (cos) than existing state-of-the-art across evaluated datasets, while achieving maximum fragmentation over BPE bounds. CSBP achieves 100% ASR on RoBERTa-QNLI — the only method to do so.
 
 ---
 
