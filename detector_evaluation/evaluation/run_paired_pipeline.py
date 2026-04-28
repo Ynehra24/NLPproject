@@ -41,6 +41,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", required=True, help="Pipeline output directory")
     parser.add_argument("--model-dir", default="results/roberta_model", help="Fine-tuned RoBERTa model dir")
     parser.add_argument("--device", default="cpu", help="Device for detector scoring")
+    parser.add_argument(
+        "--thresholds-file",
+        default="results/thresholds.json",
+        help="Detector thresholds JSON passed to evaluation.run_all",
+    )
     parser.add_argument("--detectgpt-perturb", type=int, default=2, help="DetectGPT perturbations")
     parser.add_argument("--skip-ensemble", action="store_true", help="Skip disagreement-ensemble step")
     return parser.parse_args()
@@ -108,6 +113,7 @@ def main() -> None:
         "--output-dir", str(scores_dir),
         "--device", args.device,
         "--roberta-model-dir", str(args.model_dir),
+        "--thresholds-file", str(args.thresholds_file),
         "--run-detectgpt",
         "--detectgpt-perturb", str(args.detectgpt_perturb),
         "--run-fast-detectgpt",
